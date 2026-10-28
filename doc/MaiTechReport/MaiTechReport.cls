@@ -226,9 +226,9 @@
 
 % -----------------------------------------------------------------------------
 % 封面
-%   参数：#1 赛项  #2 组别  #3 学校  #4 队伍  #5 队员  #6 教师  #7 日期
+%   参数：#1 赛项  #2 学校  #3 队伍  #4 队员  #5 教师  #6 日期
 % -----------------------------------------------------------------------------
-\newcommand{\MaiCover}[7]{%
+\newcommand{\MaiCover}[6]{%
   \begin{titlepage}
   \thispagestyle{empty}%
   \centering
@@ -236,23 +236,19 @@
   {\heiti\zihao{-2} 江苏省大学生机器人大赛\par}
   \vspace{2.2cm}
   {\heiti\zihao{2} #1\par}
-  \vspace{0.9cm}
-  {\heiti\zihao{-3} （#2）\par}
-  \vspace{1.6cm}
+  \vspace{3.0cm}
   {\heiti\zihao{2} 技术报告\par}
   \vfill
   {\songti\zihao{-3}
    \renewcommand{\arraystretch}{2.0}%
-   \begin{tabular}{@{}l@{\hspace{0.3em}}l@{}}
-     参赛学校： & \underline{\makebox[7.2cm][l]{#3}} \\
-     队伍名称： & \underline{\makebox[7.2cm][l]{#4}} \\
-     参赛队员： & \underline{\makebox[7.2cm][l]{#5}} \\
-     带队教师： & \underline{\makebox[7.2cm][l]{#6}} \\
+   \begin{tabular}{@{}r@{\hspace{0.3em}}c@{}}
+     参赛学校： & \underline{\makebox[7.2cm][c]{#2}} \\
+     队伍名称： & \underline{\makebox[7.2cm][c]{#3}} \\
+     参赛队员： & \underline{\makebox[7.2cm][c]{#4}} \\
+     带队教师： & \underline{\makebox[7.2cm][c]{#5}} \\
    \end{tabular}\par}
-  \vspace{0.4cm}
-  {\songti\zihao{5} （附联系方式）\par}
   \vspace{2.0cm}
-  {\songti\zihao{-3} 日期：\underline{\makebox[4.6cm][c]{#7}}\par}
+  {\songti\zihao{-3} 日期：\underline{\makebox[4.6cm][c]{#6}}\par}
   \vspace{1.2cm}
   \end{titlepage}
 }

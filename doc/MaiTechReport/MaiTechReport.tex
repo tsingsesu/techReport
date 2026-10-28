@@ -13,14 +13,13 @@
 \begin{document}
 
 % ---------------------------------------------------------------------------
-% 封面（队伍信息待填）
+% 封面（队伍信息）
 % ---------------------------------------------------------------------------
 \MaiCover
   {403 无人车多车交互赛}
-  {算法组}
   {南京理工大学}
   {踢踏舞}
-  {张冠良 肖通 张子傲}
+  {张冠良\quad 肖通\quad 张子傲}
   {樊卫华 fanweihua@njust.edu.cn}
   {2026.10.28}
 
@@ -35,7 +34,8 @@
 % ---------------------------------------------------------------------------
 \MaiChineseAbstract
   {基于灰度视觉与多传感器融合的无人车多车交互系统设计与实现}
-  {【待填：作者】\quad（【待填：单位】）}
+  {张冠良\quad 肖通\quad 张子傲\\
+   （南京理工大学 自动化学院，江苏 南京 210094）}
   {本文面向 2026 江苏省大学生机器人大赛 403 无人车多车交互赛，设计并实现了一辆以 TC264D 双核微控制器为核心的自主无人车。系统以 120$\times$70 灰度摄像头为主要感知器件，完成赛道边界提取、双车道识别、锥形标检测与道路标线识别；以 DL1B 激光测距模块实现非接触式发车；以 WiFi SPI 模块建立 UDP 调试日志通道。控制层采用变增益位置式 PD 转向控制与增量式 PID 速度闭环。针对双车道虚线断口导致的赛道宽度跳变，提出宽度归一化与迟滞选道策略；针对反光、人行横道造成的边界污染，提出不可信帧保持策略；针对红色锥形标在灰度图中与车道线同为白色的特点，提出基于白段宽度的二维 blob 检测与锁存式绕行方法。实车调试表明，所提方法能够改善双车道循迹的稳定性，锥形标绕行已能基本完成；减速标线识别与人行横道停车逻辑已实现，仍需结合场地光照继续整定。}
   {无人车；灰度视觉；锥形标识别；PID 控制；多传感器融合}
 
@@ -44,7 +44,9 @@
 % ---------------------------------------------------------------------------
 \MaiEnglishAbstract
   {Design and Implementation of a Multi-Sensor Autonomous Vehicle for the 403 Multi-Vehicle Interaction Competition}
-  {【To be filled: authors】\quad (【To be filled: affiliation】)}
+  {ZHANG Guanliang\quad XIAO Tong\quad ZHANG Zi'ao\\
+   (School of Automation, Nanjing University of Science and Technology,\\
+   Nanjing 210094, Jiangsu, China)}
   {This paper presents an autonomous vehicle for the 403 Multi-Vehicle Interaction Competition of the 2026 Jiangsu Provincial University Robot Competition. The system is built around a dual-core TC264D microcontroller, a 120$\times$70 grayscale camera, a DL1B time-of-flight sensor and a WiFi SPI module. A width-normalized lane policy with hysteresis, a ghost-frame holding strategy, a cone detection method based on white-run width and a marker state machine are proposed. The steering loop uses a variable-gain PD controller, while the speed loop uses an incremental PID controller. Experiments show that the proposed methods improve the stability of two-lane tracking and that cone bypass has been basically achieved; the deceleration-marking recognition and the five-second stop before the zebra crossing have been implemented and are still being tuned.}
   {autonomous vehicle; grayscale vision; cone detection; PID control; sensor fusion}
 
@@ -684,7 +686,7 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
 % ---------------------------------------------------------------------------
 % 附录
 % ---------------------------------------------------------------------------
-\MaiAppendix{附录 A\quad 核心程序清单}
+\MaiAppendix{附录 A 核心程序清单}
 
 \begin{lstlisting}[language=C]
 /* width-normalized steering target */
@@ -727,7 +729,7 @@ if (latched) {
 }
 \end{lstlisting}
 
-\MaiAppendix{附录 B\quad 关键引脚分配}
+\MaiAppendix{附录 B 关键引脚分配}
 
 \begin{table}[htbp]
   \centering
@@ -752,7 +754,7 @@ if (latched) {
   \end{tabular}
 \end{table}
 
-\MaiAppendix{附录 C\quad 典型问题与处理}
+\MaiAppendix{附录 C 典型问题与处理}
 
 \begin{table}[htbp]
   \centering
