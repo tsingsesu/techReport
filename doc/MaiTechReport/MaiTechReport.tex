@@ -36,7 +36,7 @@
   {基于灰度视觉与多传感器融合的无人车多车交互系统设计与实现}
   {张冠良\quad 肖通\quad 张子傲\\
    （南京理工大学 自动化学院，江苏 南京 210094）}
-  {本文面向 2026 江苏省大学生机器人大赛 403 无人车多车交互赛，设计并实现了一辆以 TC264D 双核微控制器为核心的自主无人车。系统以 120$\times$70 灰度摄像头为主要感知器件，完成赛道边界提取、双车道识别、锥形标检测与道路标线识别；以 DL1B 激光测距模块实现非接触式发车；以 WiFi SPI 模块建立 UDP 调试日志通道。控制层采用变增益位置式 PD 转向控制与增量式 PID 速度闭环。针对双车道虚线断口导致的赛道宽度跳变，提出宽度归一化与迟滞选道策略；针对反光、人行横道造成的边界污染，提出不可信帧保持策略；针对红色锥形标在灰度图中与车道线同为白色的特点，提出基于白段宽度的二维 blob 检测与锁存式绕行方法。实车调试表明，所提方法能够改善双车道循迹的稳定性，锥形标绕行已能基本完成；减速标线识别与人行横道停车逻辑已实现，仍需结合场地光照继续整定。}
+  {本文面向 2026 江苏省大学生机器人大赛 403 无人车多车交互赛，设计并实现了一辆以 TC264D 双核微控制器为核心的自主无人车。系统以 120$\times$70 灰度摄像头为主要感知器件，完成赛道边界提取、双车道识别、锥形标检测与道路标线识别；以 DL1B 激光测距模块实现非接触式发车；以 WiFi SPI 模块建立 UDP 调试日志通道。控制层采用变增益位置式 PD 转向控制与增量式 PID 速度闭环。针对双车道虚线断口导致的赛道宽度跳变，提出宽度归一化与迟滞选道策略；针对反光、人行横道造成的边界污染，提出不可信帧保持策略；针对红色锥形标在灰度图中与车道线同为白色的特点，提出基于白段宽度的二维 blob 检测与锁存式绕行方法。实车调试表明，所提方法能够改善双车道循迹的稳定性，锥形标绕行已能基本完成；减速标线识别与人行横道停车逻辑已实现，仍需结合场地光照继续整定；同时实现了基于左右半车道白点占比的超车/会车状态机，默认关闭以便现场标定。}
   {无人车；灰度视觉；锥形标识别；PID 控制；多传感器融合}
 
 % ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@
   {ZHANG Guanliang\quad XIAO Tong\quad ZHANG Zi'ao\\
    (School of Automation, Nanjing University of Science and Technology,\\
    Nanjing 210094, Jiangsu, China)}
-  {This paper presents an autonomous vehicle for the 403 Multi-Vehicle Interaction Competition of the 2026 Jiangsu Provincial University Robot Competition. The system is built around a dual-core TC264D microcontroller, a 120$\times$70 grayscale camera, a DL1B time-of-flight sensor and a WiFi SPI module. A width-normalized lane policy with hysteresis, a ghost-frame holding strategy, a cone detection method based on white-run width and a marker state machine are proposed. The steering loop uses a variable-gain PD controller, while the speed loop uses an incremental PID controller. Experiments show that the proposed methods improve the stability of two-lane tracking and that cone bypass has been basically achieved; the deceleration-marking recognition and the five-second stop before the zebra crossing have been implemented and are still being tuned.}
+  {This paper presents an autonomous vehicle for the 403 Multi-Vehicle Interaction Competition of the 2026 Jiangsu Provincial University Robot Competition. The system is built around a dual-core TC264D microcontroller, a 120$\times$70 grayscale camera, a DL1B time-of-flight sensor and a WiFi SPI module. A width-normalized lane policy with hysteresis, a ghost-frame holding strategy, a cone detection method based on white-run width and a marker state machine are proposed. The steering loop uses a variable-gain PD controller, while the speed loop uses an incremental PID controller. Experiments show that the proposed methods improve the stability of two-lane tracking and that cone bypass has been basically achieved; the deceleration-marking recognition and the five-second stop before the zebra crossing have been implemented and are still being tuned. A lane-half white-ratio based overtaking/oncoming state machine is also implemented and is disabled by default for field calibration.}
   {autonomous vehicle; grayscale vision; cone detection; PID control; sensor fusion}
 
 % ---------------------------------------------------------------------------
@@ -78,7 +78,7 @@
 在车辆控制方面，位置式 PID 与增量式 PID 是智能车最常用的两类控制器\upcite{zhuo2007}。位置式 PID 直接输出控制量，适合转向舵机；增量式 PID 输出控制量增量，天然具有抗积分饱和能力，适合电机速度闭环。本文根据执行机构特点分别采用变增益位置式 PD 与增量式 PID，并在速度环中加入软起动，避免起步冲击。此外，模型预测控制等方法在无人驾驶车辆轨迹跟踪中也有广泛应用\upcite{gong2014}，但其在线优化计算量对本文的微控制器平台偏大，因此仍采用结构简单的 PID 方案。
 
 \subsection{本文主要工作与创新点}
-本文围绕 403 赛项下半场的任务，完成以下工作：
+本文围绕 403 赛项的任务，完成以下工作：
 \begin{enumerate}
   \item 设计以 TC264D 双核微控制器为核心、灰度摄像头与激光测距融合的硬件平台；
   \item 设计 CPU0 控制、CPU1 感知的双核任务划分与 5 ms/10 ms 中断调度；
@@ -86,7 +86,8 @@
   \item 提出不可信帧保持策略，抑制反光和人行横道造成的边界污染；
   \item 设计基于白段宽度的锥形标检测与锁存式绕行状态机；
   \item 设计道路标线识别与“减速—停车 5 s—再起步”状态机；
-  \item 实现基于 ToF 新样本投票的非接触发车与 UDP 无线调试通道。
+  \item 实现基于 ToF 新样本投票的非接触发车与 UDP 无线调试通道；
+  \item 设计赛项一的车辆检测、超车/会车状态机与灯光联动。
 \end{enumerate}
 
 本文的主要创新点在于：用“宽度归一化 + 迟滞”而不是单一阈值解决双车道选道问题；用“沿用上一次可信目标点”而不是立即回中解决横道前的边界污染；用“白段宽度”而不是颜色解决红色锥形标在灰度图中的识别问题；用“锁存固定时长”而不是误差收敛解决锥形标绕行中的视觉反馈振荡问题。
@@ -159,18 +160,19 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
   \item 停车结束后回到循迹状态，驶过终点。
 \end{enumerate}
 
-\subsection{两赛项共用平台与赛项一接口}
+\subsection{两赛项共用平台与代码分支}
 赛项一（超车与会车）与赛项二共用底盘、摄像头、执行机构和调试系统，差异主要在决策层：赛项一需要识别同向龟行车辆和对向车辆，判断可借道区间，控制转向灯与前大灯，并在超车后回到原车道；赛项二则需要识别锥形标和道路标线。本文的软件框架将“感知结果”和“行为决策”分离，图像处理和目标检测输出统一的结构体，行为层根据当前赛项选择状态机。
 
-本轮代码重点完成赛项二。赛项一的目标车辆检测与超车决策尚未在实车代码中启用，仅在头文件中保留了 \texttt{Overtaking()}、\texttt{Will\_car()} 等接口。后续可在现有感知框架上增加基于目标尺寸、位置和时序的车辆检测，或增加超声波/ToF 阵列，用于判断前车距离与对向车抵近。本文在结论部分将其列为后续工作。
+本轮提交两套独立工程：赛项二代码在 \texttt{bizhang\_1108}，重点实现双车道循迹、锥桶绕行与标线识别；赛项一代码在 \texttt{chaoche2024\_1109}，沿用同一套图像处理与边界提取思路，新增 \texttt{Car\_Scan()} 车辆检测和 \texttt{Overtake\_Control()} 超车/会车状态机。赛项一总开关 \texttt{OVERTAKE\_ENABLE} 默认 0，需现场标定车辆检测阈值后开启，详细实现见 4.12 节。
 
 \subsection{主要创新点}
-本文的创新点可概括为以下四点：
+本文的创新点可概括为以下五点：
 \begin{enumerate}
   \item \textbf{宽度归一化与迟滞选道}：把“检测到的宽度”分为单道与整条路两种模式，分别计算本道中心、左道中心和右道中心，并用 85/60 px 的迟滞门限避免模式抖动；
   \item \textbf{不可信帧保持}：当边界贴边、可信行不足或目标点越界时，沿用上一次可信目标点，连续 2 s 不可信才回中位；
   \item \textbf{锥形标锁存绕行}：用白段宽度而非颜色识别锥桶，用固定 1 s 锁存而非误差收敛完成一次变道，用“锥桶离开 1 s”判定一组结束；
-  \item \textbf{非接触发车}：只消费 ToF 的新测量样本，过滤 8192 无效值，用“1 s 前方空旷布防 + 12 样本 8 命中”投票发车。
+  \item \textbf{非接触发车}：只消费 ToF 的新测量样本，过滤 8192 无效值，用“1 s 前方空旷布防 + 12 样本 8 命中”投票发车；
+  \item \textbf{赛项一超车/会车状态机}：用左右半车道白点占比检测前车与对向车，按 IDLE $\to$ GO $\to$ BACK 固定时序完成借道、回线与灯光联动。
 \end{enumerate}
 
 \section{机械结构设计}
@@ -561,6 +563,75 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
 
 UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、目标点、扫描行号、可信行、左右边界、宽度、舵机占空比、状态机、阈值、ToF 距离、曝光、增益、图像最小/最大/平均灰度、标线结果、锥桶计数、里程、保护位等。电脑端运行 \texttt{car\_log.py} 接收并按行打印，可以离线分析宽度分布、目标点跳变和发车时序。
 
+\subsection{赛项一：超车与会车决策}
+\label{sec:overtake}
+
+赛项一与赛项二共用底盘、摄像头、执行机构和调试系统，但使用两套独立工程：赛项二代码在 \texttt{bizhang\_1108}，赛项一代码在 \texttt{chaoche2024\_1109}。赛项一工程沿用同一套灰度图像、边界提取、中线拟合以及转向/速度控制思路，新增 \texttt{Car\_Scan()} 前方车辆检测和 \texttt{Overtake\_Control()} 行为状态机。代码用 \texttt{OVERTAKE\_ENABLE} 作为总开关，默认值为 0；关闭时状态机只做复位，不改舵机和车灯，避免未标定的参数影响正常行驶。
+
+\subsubsection{基于车道半区白点占比的车辆检测}
+赛项一的前车是 1:8$\sim$1:15 遥控车。赛道宽 1.5 m、单车道 45 cm，在 120$\times$70 图像中一条车道约 58 px，一辆车约 26$\sim$38 px 宽，且位于本车道内部；这与只有 2$\sim$3 px 宽的车道线有明显区别。难点在于车壳颜色未知：浅色车壳在二值图中是白的，深色车壳与黑色赛道一样是黑的，无法用固定颜色阈值识别。
+
+本文不直接“识别车”，而是统计两条边线之间左、右半车道的白点占比。对第 22$\sim$54 行逐行处理：先取该行左右边界的中点，再把中线左侧（左边界加 3 px 到中点减 5 px）和右侧（中点加 5 px 到右边界减 3 px）分别作为左右半车道；只有边界可信、中点位于 25$\sim$95 px、单行有效列数不少于 8 时才统计。分别累计左右半车道的白点数与总列数，得到整帧占比
+\begin{equation}
+  p_{\mathrm{L}}=\frac{N_{\mathrm{white,L}}}{N_{\mathrm{total,L}}}\times100\%,\qquad
+  p_{\mathrm{R}}=\frac{N_{\mathrm{white,R}}}{N_{\mathrm{total,R}}}\times100\%.
+  \label{eq:car_pct}
+\end{equation}
+同时记录单行白点占比超过 45\% 的最靠下那一行，作为“车离车头多近”的粗略度量。输出量为 \texttt{car\_pct\_l}、\texttt{car\_pct\_r}、\texttt{car\_row\_l}、\texttt{car\_row\_r}，并显示在 IPS200 的 page3 上，便于现场调阈值。
+
+正常赛道上两条边线之间只有一条细虚线，左右半车道白点占比都较低；浅色车进入某一半车道时，该半区占比会明显升高。设车辆靠右行驶（\texttt{OVT\_OWN\_RIGHT=1}），则右半区对应本车道前车，左半区对应对向车。当前判据为：本车道白点占比不小于 45\%，且最近行号不小于 40，认为前方有同向车；对向半区占比不小于 45\%，认为有对向车。
+
+\subsubsection{超车与会车状态机}
+超车状态机如图~\ref{fig:overtake} 所示，分为 IDLE、GO、BACK 三态。IDLE 下，若本车道连续 20 个 5 ms 周期（100 ms）检测到前车且不在冷却期，进入 GO；GO 把转向参考点向左平移 25 px，同时点亮左转向灯，保持 400 个周期（2 s）；随后进入 BACK，参考点回到本道中心，点亮右转向灯，保持 300 个周期（1.5 s）；BACK 结束后回到 IDLE，并进入 300 个周期（1.5 s）冷却，避免同一辆车反复触发。参考点的平移量 \texttt{ovt\_offset} 直接叠加到 PD 控制器的目标中心上，正值对应向左借道。
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    node distance=1.3cm,
+    st/.style={draw,circle,minimum size=1.55cm,align=center,font=\zihao{-5}},
+    box/.style={draw,rounded corners,minimum width=4.2cm,minimum height=0.9cm,align=center,font=\zihao{-5}},
+    arr/.style={-{Latex[length=2mm]},thick}]
+    \node[st] (idle) {IDLE\\巡航};
+    \node[st,right=of idle] (go) {GO\\左借道};
+    \node[st,right=of go] (back) {BACK\\回线};
+    \node[box,below=of go] (onc) {任意状态：对向半区 $\ge45\%$\\大灯闪 3 次，冷却 4 s};
+    \draw[arr] (idle) -- node[above,font=\zihao{6}]{前车 100 ms} (go);
+    \draw[arr] (go) -- node[above,font=\zihao{6}]{2 s} (back);
+    \draw[arr] (back) to[bend left=38] node[below,font=\zihao{6}]{1.5 s} (idle);
+  \end{tikzpicture}
+  \caption{赛项一超车/会车状态机}
+  \label{fig:overtake}
+\end{figure}
+
+会车分支独立于超车三态：只要对向半区白点占比不小于 45\%，就向灯光模块发出 3 次前大灯闪烁请求，并在 4 s 内不再重复。灯光模块以 100 ms 半周期翻转大灯，完成 3 次闪烁；转向灯以 130 ms 半周期闪烁，频率约 3.8 Hz。超车时左、右转向灯分别由 \texttt{ovt\_light=1/2} 直接指定，保证同侧前后灯成对亮灭；会车时只闪大灯，不改变转向灯。
+
+关键参数如表~\ref{tab:overtake} 所示。
+
+\begin{table}[htbp]
+  \centering
+  \caption{赛项一超车/会车关键参数}
+  \label{tab:overtake}
+  \begin{tabular}{lll}
+    \toprule
+    参数 & 取值 & 作用 \\
+    \midrule
+    \texttt{OVT\_OWN\_RIGHT} & 1 & 本车走右道，左半区是对向车道 \\
+    \texttt{OVT\_LANE\_PX} & 25 px & 借道时参考点左移量 \\
+    \texttt{OVT\_ENTER\_TICKS} & 20（100 ms） & 前车确认时间 \\
+    \texttt{OVT\_PASS\_TICKS} & 400（2.0 s） & 左借道保持时间 \\
+    \texttt{OVT\_BACK\_TICKS} & 300（1.5 s） & 回线保持时间 \\
+    \texttt{OVT\_COOL\_TICKS} & 300（1.5 s） & 超车后冷却时间 \\
+    \texttt{CAR\_PCT\_HI} & 45\% & 判定有车的白点占比阈值 \\
+    \texttt{CAR\_NEAR\_ROW} & 40 & 判定前车已靠近的行号阈值 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection{调试方法与当前限制}
+调试时先保持 \texttt{OVERTAKE\_ENABLE=0}，在 page3 观察 \texttt{car\_pct\_l} 和 \texttt{car\_pct\_r}：空赛道两个值都应较低；把遥控车放到本车道前方，右半区应明显升高；把车放到对向车道，左半区应升高。根据实测调整 \texttt{CAR\_PCT\_HI} 和 \texttt{CAR\_NEAR\_ROW}，确认不误触发后，再把总开关改为 1，检查左转向灯、右转向灯和前大灯的时序。该分支的舵机中位按 857 标定，而赛项二分支按 917 标定；两套代码切换烧录时必须重新校准转向中位，否则会持续跑偏。
+
+当前实现仍是基础版本，存在以下限制：其一，白点占比对浅色车壳有效，深色车壳可能与黑色赛道混淆而漏检，后续可结合目标宽度、纵向长度和连续帧位置做跟踪；其二，借道和回线按固定时长控制，尚未根据中线虚线位置判断回线时机；其三，会车分支目前只实现前大灯闪烁，规则中“会车后转向左车道”的行驶动作尚未实现；其四，赛项一工程没有合入赛项二的锥桶、标线和反光抑制模块，两套工程需分别烧录。后续可将两套感知结果统一到同一框架，并增加超声波/ToF 测距，提高前车距离判断的可靠性。
+
 \section{系统开发与调试}
 \label{sec:debug}
 
@@ -588,6 +659,8 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
 
 发车模块观察 page3 的 $To$、$A$、$H$。$To=8192$ 表示前方空旷或本轮未测完；$A=1$ 表示已布防；$H$ 从 0 涨到 8 表示即将发车。若 $A$ 一直为 0，说明前方一直有近距物体，需要检查 ToF 安装角度和遮挡。
 
+赛项一模块先保持 \texttt{OVERTAKE\_ENABLE=0}，观察 page3 的 \texttt{car\_pct\_l}、\texttt{car\_pct\_r}：空赛道两个值都低；本车道放遥控车时右半区升高；对向车道放车时左半区升高。先调 \texttt{CAR\_PCT\_HI} 和 \texttt{CAR\_NEAR\_ROW}，确认不误触发后再打开总开关，检查左转向灯、右转向灯和前大灯时序。两套工程切换烧录时，必须重新校准舵机中位（赛项一按 857，赛项二按 917）。
+
 \subsection{规则对应测试}
 按照比赛规则，正式比赛前需要进行直线测试，正式比赛每项两轮、每轮一次机会。本文在调试中按以下顺序验证：
 \begin{enumerate}
@@ -596,6 +669,7 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
   \item \textbf{非接触发车}：手在前方 0.5 m 内挥动，观察 $H$ 是否达到 8、车辆是否发车；车停在墙边时不得误发车；
   \item \textbf{锥桶测试}：两组锥桶按 30$^\circ$ 摆放，检查车辆是否一组变道、二组回线，转向灯是否在同侧前后同步闪烁；
   \item \textbf{标线测试}：依次通过菱形、停车线和人行横道，检查是否减速、是否在停车线前停 5 s、刹车灯是否亮起；
+  \item \textbf{超车/会车测试}：用遥控车分别作为同向慢车和对向车，检查 \texttt{car\_pct} 是否升高、是否在 100 ms 后左借道、2 s 后右回线，转向灯与大灯是否按规则动作；
   \item \textbf{完整流程}：从发车到终点连续跑完，记录扣分项和用时。
 \end{enumerate}
 
@@ -612,6 +686,8 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
     直线循迹 & $TP$、舵机占空比、车辆轨迹 & 不压边线、不碰挡板，$TP$ 无大幅跳变 \\
     非接触发车 & $A$、$H$、\texttt{start\_trigger} & 挥手后 $H$ 达到 8，静止时不误触发 \\
     锥桶绕行 & $CN$、\texttt{cone\_x}、转向灯 & 第一组变道、第二组回线，灯同步闪烁 \\
+    超车 & \texttt{car\_pct\_r}、\texttt{ovt\_state}、转向灯 & 前车持续 100 ms 后左借道 2 s，回线右灯 1.5 s \\
+    会车 & \texttt{car\_pct\_l}、大灯 & 对向半区 $\ge45\%$ 时大灯闪 3 次，4 s 内不重复 \\
     菱形减速 & $DI$、$MK$、速度 & 看到菱形后进入慢行，刹车灯亮 \\
     横道停车 & $CW$、$MK$、里程 & 停车线前停车 5 s，不压线 \\
     完整流程 & 用时、扣分 & 全程无人工干预，按规定路线通过终点 \\
@@ -623,7 +699,7 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
 调试中遇到的问题大多不是“代码写错”，而是“模型与场景不匹配”。最典型的四类是：虚线断口导致宽度在 43/116 px 之间跳变，用宽度归一化加迟滞解决；横道和反光导致边界污染、目标点跳到画面外，用不可信帧保持解决；ToF 的 8192 无效值被误当作遮挡，改为只消费测量完成的新样本；锥桶白环只有约 1 行高，要求 2 行会全部漏检，改为至少 1 行。完整的问题、根因与处理清单见附录 C 表 C.1。
 
 \subsection{当前状态与注意事项}
-截至本文撰写时，双车道循迹和锥形标绕行已能基本完成，但仍处于参数整定阶段：锥桶识别率在部分光照和锥桶角度下仍有波动，镜头偏振片带来的进光量损失进一步压缩了阈值调节余量；菱形减速目前是“直接降一半”，还不是规则要求的“逐渐减速”；长时间直道存在轻微右偏，已通过转向微调补偿，后续需要从摄像头安装和舵机中位两方面做机械对中；赛项一的目标车辆检测与超车决策尚未启用。
+截至本文撰写时，双车道循迹和锥形标绕行已能基本完成，但仍处于参数整定阶段：锥桶识别率在部分光照和锥桶角度下仍有波动，镜头偏振片带来的进光量损失进一步压缩了阈值调节余量；菱形减速目前是“直接降一半”，还不是规则要求的“逐渐减速”；长时间直道存在轻微右偏，已通过转向微调补偿，后续需要从摄像头安装和舵机中位两方面做机械对中；赛项一的车辆检测与超车/会车状态机已实现，但 \texttt{OVERTAKE\_ENABLE} 默认 0，需标定车辆检测阈值后开启；暗色车壳、虚线回线时机和会车后左道行驶仍需完善。
 
 调试和比赛时需要注意：
 \begin{enumerate}
@@ -639,17 +715,18 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
 \label{sec:conclusion}
 
 \subsection{工作总结}
-本文面向 2026 江苏省大学生机器人大赛 403 无人车多车交互赛，设计并实现了一套以 TC264D 双核微控制器为核心的自主无人车系统。系统采用 120$\times$70 灰度摄像头完成赛道感知，采用 DL1B 激光测距实现非接触发车，采用 WiFi SPI 建立调试通道；控制层采用变增益 PD 转向和增量式 PID 速度闭环；行为层实现了双车道循迹、锥形标绕行、菱形减速和人行横道停车 5 s 等赛项二任务。
+本文面向 2026 江苏省大学生机器人大赛 403 无人车多车交互赛，设计并实现了一套以 TC264D 双核微控制器为核心的自主无人车系统。系统采用 120$\times$70 灰度摄像头完成赛道感知，采用 DL1B 激光测距实现非接触发车，采用 WiFi SPI 建立调试通道；控制层采用变增益 PD 转向和增量式 PID 速度闭环；行为层实现了双车道循迹、锥形标绕行、菱形减速和人行横道停车 5 s 等赛项二任务；此外，赛项一分支实现了基于车道半区白点占比的前车/对向车检测、三态超车状态机和转向灯/大灯联动。
 
 针对双车道虚线导致的宽度跳变，本文提出宽度归一化与迟滞选道，把“一条道”和“整条路”分开处理，避免了同一公式在两种宽度下算出不同位置的问题。针对反光和横道导致的边界污染，本文提出不可信帧保持，用保护位和上次可信目标点替代单帧垃圾数据。针对红色锥形标在灰度图中与车道线同为白色的问题，本文利用白段宽度和二维 blob 跟踪实现检测，并用锁存固定时长完成一次变道。针对 ToF 的 8192 无效值，本文改为只消费新样本，并用“布防 + 滑动窗口投票”实现非接触发车。
 
 \subsection{创新点}
-本文的创新点主要体现在以下四个方面：
+本文的创新点主要体现在以下五个方面：
 \begin{enumerate}
   \item \textbf{宽度归一化与迟滞选道}：用宽度判断当前扫到的是一条道还是整条路，分别计算本道中心、左道中心和右道中心，并用 85/60 px 迟滞避免模式抖动；
   \item \textbf{不可信帧保持}：把保护位真正接入控制，在边界污染时沿用上次可信目标点，连续 2 s 不可信才回中；
   \item \textbf{锥形标锁存绕行}：用白段宽度区分锥桶和车道线，用近端 blob 平均稳定方向，用固定 1 s 锁存避免视觉反馈振荡；
-  \item \textbf{非接触发车}：过滤 8192 无效值，用 1 s 空旷布防和 12 样本 8 命中投票，兼顾抗误触发和响应速度。
+  \item \textbf{非接触发车}：过滤 8192 无效值，用 1 s 空旷布防和 12 样本 8 命中投票，兼顾抗误触发和响应速度；
+  \item \textbf{赛项一超车/会车状态机}：用左右半车道白点占比检测前车与对向车，按 IDLE $\to$ GO $\to$ BACK 固定时序完成借道、回线与灯光联动，默认关闭以便现场标定。
 \end{enumerate}
 
 \subsection{不足与改进}
@@ -658,7 +735,7 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
   \item 锥形标识别率受光照、锥桶角度和车辆位置影响，尚未稳定；后续可将所有 blob 拟合为直线 $x=a\cdot row+b$，让车辆沿斜线平行行驶，而不是固定 1 s 变道；
   \item 菱形减速是“直接降一半”，未实现规则要求的“逐渐减速”；后续可按里程分 3$\sim$5 档逐级降速；
   \item 长时间直道存在轻微右偏，目前靠转向微调补偿；后续应从摄像头水平度、舵机中位和左右轮摩擦三方面做机械对中；
-  \item 赛项一的目标车辆检测与超车/会车决策尚未实现。下一步可在现有感知框架上增加两类信息：一是利用目标车辆在画面中的宽度、纵向长度和连续帧位置变化，区分同向龟行车与对向车；二是在车头增加超声波或 ToF 阵列，直接测量前车距离和对向车抵近速度。决策层按“巡航—发现同向慢车—确认左侧可借道—打左转向灯并变道—超车后在中线虚线处回线”以及“发现对向车—2 m 内闪大灯 2$\sim$3 次—会车后回右道”两个状态机实现，执行层复用本文的转向、速度和车灯接口；
+  \item 赛项一已实现基础版本。车辆检测用左右半车道白点占比区分前车/对向车；超车状态机按 IDLE $\to$ GO $\to$ BACK 完成借道与回线，灯光同步。但总开关默认 0，浅色车壳效果较好，深色车壳可能漏检；借道/回线按固定时长而非虚线位置；会车分支目前只闪大灯，未实现会车后左道行驶。下一步可增加目标跟踪与 ToF/超声测距，并用中线虚线检测确定回线时机；
   \item 图像处理仍以传统视觉为主，对复杂光照的适应性有限；后续可在算力允许的平台上引入轻量级神经网络，提高锥桶和车辆的检测鲁棒性。
 \end{enumerate}
 
@@ -727,6 +804,53 @@ if (latched) {
     else          latched = 0;
     if (latched) pt = (int32)Point_Mid + (int32)dir * CONE_LANE_HALF;
 }
+\end{lstlisting}
+
+\begin{lstlisting}[language=C]
+/* Car_Scan: white-pixel ratio in each lane half */
+for (i = CAR_ROW_MIN; i <= CAR_ROW_MAX; i++) {
+    if (Left_Line[i] <= 2 || Right_Line[i] >= (COL - 3)) continue;
+    mid = (Left_Line[i] + Right_Line[i]) >> 1;
+    if (mid < 25 || mid > 95) continue;
+
+    for (j = Left_Line[i] + 3; j + 5 < mid; j++) {
+        trow_l++; if (data[i * COL + j]) wrow_l++;
+    }
+    for (j = mid + 5; j + 3 < Right_Line[i]; j++) {
+        trow_r++; if (data[i * COL + j]) wrow_r++;
+    }
+}
+car_pct_l = tl ? (uint8)(wl * 100 / tl) : 0;
+car_pct_r = tr ? (uint8)(wr * 100 / tr) : 0;
+
+/* Overtake_Control: IDLE -> GO -> BACK */
+case OVT_IDLE:
+    if (car_here) det++; else det = 0;
+    if (det >= OVT_ENTER_TICKS && cool == 0) {
+        ovt_state  = OVT_GO;
+        ovt_offset = OVT_LANE_PX;   /* +25 px = left */
+        ovt_light  = 1;             /* left turn signal */
+        hold       = OVT_PASS_TICKS;
+    }
+    break;
+case OVT_GO:
+    if (hold) hold--;
+    else {
+        ovt_state  = OVT_BACK;
+        ovt_offset = 0;
+        ovt_light  = 2;             /* right turn signal */
+        hold       = OVT_BACK_TICKS;
+    }
+    break;
+case OVT_BACK:
+    if (hold) hold--;
+    else {
+        ovt_state  = OVT_IDLE;
+        ovt_offset = 0;
+        ovt_light  = 0;
+        cool       = OVT_COOL_TICKS;
+    }
+    break;
 \end{lstlisting}
 
 \MaiAppendix{附录 B 关键引脚分配}
