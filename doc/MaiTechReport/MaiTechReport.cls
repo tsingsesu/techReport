@@ -30,7 +30,10 @@
   left=2cm, right=2cm,
   bindingoffset=0.5cm,
   headheight=13pt, headsep=2.5pt,
-  footskip=1.75cm
+  % 规范：页脚距边界 1.75cm。geometry 的 footskip 是「正文底边到页脚基线」，
+  % 与 Word 的「页脚距边界」不是同一个量；按 9pt 页脚折算约 0.55cm。
+  % 本报告页码在页眉，页脚为空，此设置只保证以后加页脚时位置正确。
+  footskip=0.55cm
 ]{geometry}
 
 % -----------------------------------------------------------------------------
