@@ -36,7 +36,7 @@
   {基于灰度视觉与多传感器融合的无人车多车交互系统设计与实现}
   {张冠良\quad 肖通\quad 张子傲\\
    （南京理工大学 自动化学院，江苏 南京 210094）}
-  {本文面向 2026 江苏省大学生机器人大赛 403 无人车多车交互赛，设计并实现了一辆以 TC264D 双核微控制器为核心的自主无人车。系统以 120$\times$70 灰度摄像头为主要感知器件，完成赛道边界提取、双车道识别、锥形标检测与道路标线识别；以 DL1B 激光测距模块实现非接触式发车；以 WiFi SPI 模块建立 UDP 调试日志通道。控制层采用变增益位置式 PD 转向控制与增量式 PID 速度闭环。针对双车道虚线断口导致的赛道宽度跳变，提出宽度归一化与迟滞选道策略；针对反光、人行横道造成的边界污染，提出不可信帧保持策略；针对红色锥形标在灰度图中与车道线同为白色的特点，提出基于白段宽度的二维 blob 检测与锁存式绕行方法。实车调试表明，所提方法能够改善双车道循迹的稳定性，锥形标绕行已能基本完成；减速标线识别与人行横道停车逻辑已实现，仍需结合场地光照继续整定；同时实现了基于左右半车道白点占比的超车/会车状态机，默认关闭以便现场标定。}
+  {本文面向 2026 江苏省大学生机器人大赛 403 无人车多车交互赛，设计并实现了一辆以 TC264D 双核微控制器为核心的自主无人车。系统以 120$\times$70 灰度摄像头为主要感知器件，完成赛道边界提取、双车道识别、锥形标检测与道路标线识别；以 DL1B 激光测距模块实现非接触式发车；以 IPS200 屏幕和按键完成现场参数整定。控制层采用变增益位置式 PD 转向控制与增量式 PID 速度闭环。针对双车道虚线断口导致的赛道宽度跳变，提出宽度归一化与迟滞选道策略；针对反光、人行横道造成的边界污染，提出不可信帧保持策略；针对红色锥形标在灰度图中与车道线同为白色的特点，提出基于白段宽度的二维 blob 检测与锁存式绕行方法。实车调试表明，所提方法能够改善双车道循迹的稳定性，锥形标绕行已能基本完成；减速标线识别与人行横道停车逻辑已实现，仍需结合场地光照继续整定；同时实现了基于左右半车道白点占比的超车/会车状态机，默认关闭以便现场标定。}
   {无人车；灰度视觉；锥形标识别；PID 控制；多传感器融合}
 
 % ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@
   {ZHANG Guanliang\quad XIAO Tong\quad ZHANG Zi'ao\\
    (School of Automation, Nanjing University of Science and Technology,\\
    Nanjing 210094, Jiangsu, China)}
-  {This paper presents an autonomous vehicle for the 403 Multi-Vehicle Interaction Competition of the 2026 Jiangsu Provincial University Robot Competition. The system is built around a dual-core TC264D microcontroller, a 120$\times$70 grayscale camera, a DL1B time-of-flight sensor and a WiFi SPI module. A width-normalized lane policy with hysteresis, a ghost-frame holding strategy, a cone detection method based on white-run width and a marker state machine are proposed. The steering loop uses a variable-gain PD controller, while the speed loop uses an incremental PID controller. Experiments show that the proposed methods improve the stability of two-lane tracking and that cone bypass has been basically achieved; the deceleration-marking recognition and the five-second stop before the zebra crossing have been implemented and are still being tuned. A lane-half white-ratio based overtaking/oncoming state machine is also implemented and is disabled by default for field calibration.}
+  {This paper presents an autonomous vehicle for the 403 Multi-Vehicle Interaction Competition of the 2026 Jiangsu Provincial University Robot Competition. The system is built around a dual-core TC264D microcontroller, a 120$\times$70 grayscale camera, a DL1B time-of-flight sensor and an IPS200 display for on-site tuning. A width-normalized lane policy with hysteresis, a ghost-frame holding strategy, a cone detection method based on white-run width and a marker state machine are proposed. The steering loop uses a variable-gain PD controller, while the speed loop uses an incremental PID controller. Experiments show that the proposed methods improve the stability of two-lane tracking and that cone bypass has been basically achieved; the deceleration-marking recognition and the five-second stop before the zebra crossing have been implemented and are still being tuned. A lane-half white-ratio based overtaking/oncoming state machine is also implemented and is disabled by default for field calibration.}
   {autonomous vehicle; grayscale vision; cone detection; PID control; sensor fusion}
 
 % ---------------------------------------------------------------------------
@@ -86,7 +86,7 @@
   \item 提出不可信帧保持策略，抑制反光和人行横道造成的边界污染；
   \item 设计基于白段宽度的锥形标检测与锁存式绕行状态机；
   \item 设计道路标线识别与“减速—停车 5 s—再起步”状态机；
-  \item 实现基于 ToF 新样本投票的非接触发车与 UDP 无线调试通道；
+  \item 实现基于 ToF 新样本投票的非接触发车，以及基于屏幕和按键的现场调试；
   \item 设计赛项一的车辆检测、超车/会车状态机与灯光联动。
 \end{enumerate}
 
@@ -96,7 +96,7 @@
 \label{sec:overall}
 
 \subsection{总体架构}
-系统按功能划分为感知层、决策层、执行层和调试层，整体架构如图~\ref{fig:arch} 所示。感知层由 MT9V034 灰度摄像头和 DL1B 激光测距模块组成，分别提供赛道图像和车头前方的距离信息。决策层为 Infineon TC264D 双核微控制器，负责图像处理、赛道识别、状态机决策和控制量计算。执行层包括转向舵机、左右直流电机、编码器和 8 路车灯。调试层由 IPS200 液晶屏、按键和 WiFi SPI 模块组成，用于现场显示、参数整定和日志回传。
+系统按功能划分为感知层、决策层、执行层和调试层，整体架构如图~\ref{fig:arch} 所示。感知层由 MT9V034 灰度摄像头和 DL1B 激光测距模块组成，分别提供赛道图像和车头前方的距离信息。决策层为 Infineon TC264D 双核微控制器，负责图像处理、赛道识别、状态机决策和控制量计算。执行层包括转向舵机、左右直流电机、编码器和 8 路车灯。调试层由 IPS200 液晶屏和按键组成，用于现场显示和参数整定；比赛配置不含无线收发电路。
 
 \begin{figure}[htbp]
   \centering
@@ -109,14 +109,12 @@
     \node[box] (servo) at (9.6,3.2) {转向舵机};
     \node[box] (motor) at (9.6,1.85) {左右直流电机\\+ 编码器};
     \node[box] (light) at (9.6,0.5) {8 路车灯};
-    \node[box] (wifi)  at (4.8,-0.3) {WiFi SPI\\调试 / 日志};
-    \node[box] (ips)   at (4.8,-1.6) {IPS200 屏\\按键};
+    \node[box] (ips)   at (4.8,-0.5) {IPS200 屏\\按键};
     \draw[arr] (cam) -- (mcu);
     \draw[arr] (tof) -- (mcu);
     \draw[arr] (mcu) -- (servo);
     \draw[arr] (mcu) -- (motor);
     \draw[arr] (mcu) -- (light);
-    \draw[arr] (mcu) -- (wifi);
     \draw[arr] (mcu) -- (ips);
   \end{tikzpicture}
   \caption{系统整体架构}
@@ -124,7 +122,7 @@
 \end{figure}
 
 \subsection{双核任务划分与实时调度}
-TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、计算密集任务放 CPU1”的原则划分任务。CPU0 负责 5 ms 控制中断、10 ms 灯光与发车判定、主循环中的按键扫描、屏幕刷新和 UDP 日志发送；CPU1 负责摄像头帧处理、ToF 采样和图像算法。两核通过全局变量和帧完成标志通信，CPU1 每处理完一帧将 \texttt{mt9v03x\_finish\_flag} 清零，CPU0 只在标志置位时读取最新结果，避免读写同一帧造成撕裂。
+TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、计算密集任务放 CPU1”的原则划分任务。CPU0 负责 5 ms 控制中断、10 ms 灯光与发车判定、主循环中的按键扫描和屏幕刷新；CPU1 负责摄像头帧处理、ToF 采样和图像算法。两核通过全局变量和帧完成标志通信，CPU1 每处理完一帧将 \texttt{mt9v03x\_finish\_flag} 清零，CPU0 只在标志置位时读取最新结果，避免读写同一帧造成撕裂。
 
 中断调度如表~\ref{tab:schedule} 所示。5 ms 中断承担转向舵机输出和速度闭环，是控制系统的核心节拍；10 ms 中断承担车灯闪烁和 ToF 发车投票。转向与速度分开在不同中断中执行，避免一次中断内计算量过大导致抖动。
 
@@ -141,13 +139,13 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
     10 ms & 车灯控制 & 转向灯闪烁、刹车灯、大灯 \\
     10 ms & ToF 发车判定 & 消费新样本、12 点滑动窗口投票 \\
     帧同步 & 图像处理 & 二值化、边界提取、锥桶与标线识别 \\
-    主循环 & 屏幕、按键、日志 & 人机交互与无线调试 \\
+    主循环 & 屏幕、按键 & 人机交互与参数整定 \\
     \bottomrule
   \end{tabular}
 \end{table}
 
 \subsection{比赛流程与状态机}
-车辆上电后首先进入初始化阶段：完成时钟、舵机中位、电机、编码器、ToF、摄像头、按键、车灯和 WiFi 初始化。初始化期间 8 路车灯全部点亮，满足规则“开机后所有车灯亮起超过 3 s”的要求。随后车辆进入待发车状态，转向舵机保持中位，电机不输出。
+车辆上电后首先进入初始化阶段：完成时钟、舵机中位、电机、编码器、ToF、摄像头、按键和车灯初始化。初始化期间 8 路车灯全部点亮，满足规则“开机后所有车灯亮起超过 3 s”的要求。随后车辆进入待发车状态，转向舵机保持中位，电机不输出。
 
 发车采用两种模式：比赛模式 \texttt{START\_MODE=1} 下，ToF 连续检测到挥手动作后置位 \texttt{start\_trigger}；调试模式 \texttt{START\_MODE=2} 下，上电 20 s 后自动发车，便于无裁判环境下调试。发车后 \texttt{Stop\_1} 置 1，车辆进入循迹状态，依次执行：
 
@@ -179,7 +177,7 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
 \label{sec:mech}
 
 \subsection{底盘与总体布局}
-车模采用逐飞科技 C 车模，前轮由 SU400 舵机通过拉杆转向，后轮由两个有刷直流电机驱动。整车实测外形尺寸为 29 cm$\times$18.5 cm$\times$25 cm（长$\times$宽$\times$高），满足规则“长不超过 50 cm、宽不超过 30 cm、高不超过 30 cm”的资格要求。车模原厂状态的竖直安装杆高约 35 cm，超出高度限制 5 cm；由于摄像头实际安装高度约 25 cm，本文将杆体上部截短，使整车高度降到约 25 cm，既保留了摄像头视野，又通过了资格评定。主控板、摄像头、ToF、WiFi 模块、IPS200 屏和电池沿车体纵向布置，电池靠近车体中部以降低重心，减少加减速时的俯仰。
+车模采用逐飞科技 C 车模，前轮由 SU400 舵机通过拉杆转向，后轮由两个有刷直流电机驱动。整车实测外形尺寸为 29 cm$\times$18.5 cm$\times$25 cm（长$\times$宽$\times$高），满足规则“长不超过 50 cm、宽不超过 30 cm、高不超过 30 cm”的资格要求。车模原厂状态的竖直安装杆高约 35 cm，超出高度限制 5 cm；由于摄像头实际安装高度约 25 cm，本文将杆体上部截短，使整车高度降到约 25 cm，既保留了摄像头视野，又通过了资格评定。主控板、摄像头、ToF、IPS200 屏和电池沿车体纵向布置，电池靠近车体中部以降低重心，减少加减速时的俯仰。
 
 \begin{figure}[htbp]
   \centering
@@ -225,7 +223,6 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
     编码器 & 普地 1024 线 mini，2 个 & 左右轮速度与里程 \\
     摄像头 & 总钻风 MT9V034 + 飞思尔偏振片 & 赛道与目标感知 \\
     测距 & DL1B（VL53L1X） & 非接触发车与前方测距 \\
-    无线 & WIFI6B21-SPI V2.0 & 图传与 UDP 日志 \\
     显示 & IPS200 全彩屏（SPI） & 参数整定与状态监视 \\
     电池 & 格氏 ACE 3S 2200 mAh 30C & 11.1 V 动力电源 \\
     \bottomrule
@@ -235,7 +232,7 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
 \subsection{主控与最小系统}
 主控采用 Infineon AURIX TC264D 双核微控制器，主频 200 MHz，片内集成多路 PWM、正交编码器接口、SPI、I\textsuperscript{2}C、DMA 和定时器单元\upcite{tc26x}。选择该芯片的原因有三点：其一，双核结构可以把图像处理与控制任务分离，保证 5 ms 控制周期；其二，PWM、编码器和 DMA 资源丰富，可同时驱动舵机、双电机、摄像头和显示屏；其三，逐飞开源库提供了较完整的底层驱动\upcite{seekfree}，缩短了开发周期。
 
-核心板为仿逐飞 TC264 自制板，主板为逐飞通用学习母板 V3.1，电机驱动板为仿逐飞 DRV8701E 自制双路 H 桥板。主板上集成电机驱动接口、舵机接口、摄像头接口、无线模块接口、IPS200 接口和按键。程序在 AURIX Development Studio 中编译，使用 TASKING 编译器生成 hex 文件，再通过 AURIX Flasher 烧录。
+核心板为仿逐飞 TC264 自制板，主板为逐飞通用学习母板 V3.1，电机驱动板为仿逐飞 DRV8701E 自制双路 H 桥板。主板上集成电机驱动接口、舵机接口、摄像头接口、IPS200 接口和按键。程序在 AURIX Development Studio 中编译，使用 TASKING 编译器生成 hex 文件，再通过 AURIX Flasher 烧录。
 
 \subsection{视觉传感器}
 视觉传感器采用总钻风 MT9V034 全局快门灰度摄像头\upcite{mt9v034}（底层驱动沿用 MT9V03X 库），配置分辨率为 120$\times$70。全局快门在曝光期间所有像素同时感光，避免了卷帘快门在高速运动下的果冻效应；灰度输出减少了数据量，使一帧图像仅 8400 字节，便于在微控制器上实时处理。摄像头通过并行数据线、VSYNC、PCLK 与 DMA 连接，CPU1 在帧完成标志置位后读取整帧。
@@ -252,22 +249,19 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
 
 转向舵机为 SU400，采用 50 Hz PWM 控制，中位占空比实测为 917，行程为 $\pm$70 个占空比单位，约对应 $\pm$15$^\circ$。早期代码将上限写死为 915，而真实中位为 917，导致舵机无法向左打；本文改为运行时变量 \texttt{Steer\_Mid}，并让上下限随中位变化，解决了单方向转向问题。
 
-\subsection{无线通信与人机接口}
-无线模块为 WIFI6B21-SPI V2.0，属于调试设备，比赛时可拆下；它通过 SPI3 与主控连接，SCK 为 P22\_3，MOSI 为 P22\_0，MISO 为 P22\_1，CS 为 P22\_2。模块的 INT 引脚在本板上恒为低电平，原版驱动等待 INT 会永久超时；本文将驱动改为固定延时，普通命令延时 250 ms、连接 WiFi 延时 3 s、连接 TCP 延时 1.5 s。代价是上电后约 15 s 屏幕才亮，这段时间黑屏属于正常现象。
+\subsection{人机接口与现场调试}
+人机接口包括 IPS200 全彩屏（SPI 版）和 5 个按键接口（S1$\sim$S5，当前主要使用 S2$\sim$S5）。屏幕分为 3 页：page1 显示图像、边界、锥桶和识别结果；page2 显示电机、编码器和速度；page3 显示 15 个可调参数、ToF 状态和关键控制量。按键 S2 翻页，S5 切换参数，S3/S4 减小/增大参数，长按 S5 保存到 flash。
 
-无线模块支持 TCP 和 UDP 两种模式。比赛调试阶段使用 UDP 向电脑回传日志，每 10 个主循环发送一行，约 250 ms 一行；需要看图时切换为 TCP，通过逐飞助手接收灰度图或二值图。SPI 时钟从 30 MHz 降到 10 MHz，以提高长排线连接的稳定性。
-
-人机接口包括 IPS200 全彩屏（SPI 版，调试设备，比赛时可拆）和 5 个按键接口（S1$\sim$S5，当前主要使用 S2$\sim$S5）。屏幕分为 3 页：page1 显示图像、边界、锥桶和识别结果；page2 显示电机、编码器和速度；page3 显示 15 个可调参数、WiFi 诊断和 ToF 状态。按键 S2 翻页，S5 切换参数，S3/S4 减小/增大参数，长按 S5 保存到 flash。
+按照比赛规则，整车比赛配置不安装任何无线收发电路。调试信息通过 IPS200 屏幕分页显示，参数通过按键整定并保存到 flash，现场不需要外部通信；屏幕刷新和按键扫描放在主循环，不占用 5 ms 控制中断。
 
 \subsection{电源与车灯}
-整车由格氏 ACE 系列 3S 2200 mAh 30C 锂聚合物电池供电，标称电压 11.1 V。主控板、摄像头、ToF、WiFi 模块和屏幕由板上稳压电路供电；电机和舵机由电池直接供电。车灯共 8 路，全部为高电平点亮，其中左前转向 P02\_4、右前转向 P02\_5、左后转向 P02\_6、右后转向 P02\_7、左后刹车 P20\_11、右后刹车 P00\_8、左前大灯 P20\_13、右前大灯 P20\_14。前大灯引脚尚待最终确认，目前借用刹车灯附近引脚。
+整车由格氏 ACE 系列 3S 2200 mAh 30C 锂聚合物电池供电，标称电压 11.1 V。主控板、摄像头、ToF 和屏幕由板上稳压电路供电；电机和舵机由电池直接供电。车灯共 8 路，全部为高电平点亮，其中左前转向 P02\_4、右前转向 P02\_5、左后转向 P02\_6、右后转向 P02\_7、左后刹车 P20\_11、右后刹车 P00\_8、左前大灯 P20\_13、右前大灯 P20\_14。前大灯引脚尚待最终确认，目前借用刹车灯附近引脚。
 
 \subsection{引脚分配与硬件问题}
-关键引脚分配见附录 B 表 B.1。正文只列出最容易出问题的几组：舵机 PWM 为 P33\_9；右轮 PWM/DIR 为 P21\_2/P21\_3，编码器为 P20\_3/P20\_0；左轮 PWM/DIR 为 P21\_4/P21\_5，编码器为 P33\_7/P33\_6；摄像头数据为 P00\_0$\sim$P00\_7；ToF 软件 I\textsuperscript{2}C 为 P33\_4/P33\_5；WiFi SPI 为 P22\_0$\sim$P22\_3。完整表格放在附录，便于硬件维护时查阅。
+关键引脚分配见附录 B 表 B.1。正文只列出最容易出问题的几组：舵机 PWM 为 P33\_9；右轮 PWM/DIR 为 P21\_2/P21\_3，编码器为 P20\_3/P20\_0；左轮 PWM/DIR 为 P21\_4/P21\_5，编码器为 P33\_7/P33\_6；摄像头数据为 P00\_0$\sim$P00\_7；ToF 软件 I\textsuperscript{2}C 为 P33\_4/P33\_5。完整表格放在附录，便于硬件维护时查阅。
 
 硬件调试中遇到的主要问题如下：
 \begin{enumerate}
-  \item \textbf{WiFi INT 引脚恒低}：模块 INT 始终为低，驱动等待中断会超时，改为固定延时后解决；
   \item \textbf{DL1B I\textsuperscript{2}C 超频}：默认延时对应约 1.02 MHz，超过 400 kHz 上限，改为延时 50 后稳定；
   \item \textbf{编码器与 GPIO 复用}：P33\_7/P33\_6 是左轮编码器输入，不能当作普通 GPIO 使用，否则速度反馈恒为 0，PWM 顶满导致飞车；
   \item \textbf{车灯与 ToF 引脚冲突}：P20\_11/P20\_14 与第二路 ToF 的软件 I\textsuperscript{2}C 冲突，增加第二路 ToF 前必须换脚；
@@ -278,7 +272,7 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
 \label{sec:software}
 
 \subsection{软件总体架构}
-软件采用“前后台 + 中断”的结构。CPU0 主循环负责按键、屏幕和日志；5 ms 定时中断负责速度环和转向环；10 ms 定时中断负责车灯和 ToF 判定。CPU1 主循环等待摄像头帧完成标志，依次执行阈值计算、二值化、边界提取、标线识别、锥桶识别、反光抑制和目标点计算，如图~\ref{fig:pipeline} 所示。
+软件采用“前后台 + 中断”的结构。CPU0 主循环负责按键和屏幕；5 ms 定时中断负责速度环和转向环；10 ms 定时中断负责车灯和 ToF 判定。CPU1 主循环等待摄像头帧完成标志，依次执行阈值计算、二值化、边界提取、标线识别、锥桶识别、反光抑制和目标点计算，如图~\ref{fig:pipeline} 所示。
 
 \begin{figure}[htbp]
   \centering
@@ -343,7 +337,7 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
   \item 虚线当前行是断口：虚线被跳过，扫描到“左实线 + 右实线”，宽度约 90$\sim$116 px，对应整条路。
 \end{enumerate}
 
-原算法用同一个公式 $P_t=L+W\cdot k/100$ 计算目标点，其中 $k$ 为选道系数。当 $W=43$ 时，$P_t$ 已经贴到右边缘之外；当 $W=116$ 时，$P_t$ 才是右道中心。同一个 $k$ 在两种宽度下算出的根本不是同一个位置，车辆就会在左右道之间来回穿梭。日志统计显示，729 帧中 $R=117$（扫描到边界仍未找到线）出现 173 次，占 24\%；$W$ 呈双峰分布，30$\sim$49 px 有 40 帧，80$\sim$119 px 有 27 帧。
+原算法用同一个公式 $P_t=L+W\cdot k/100$ 计算目标点，其中 $k$ 为选道系数。当 $W=43$ 时，$P_t$ 已经贴到右边缘之外；当 $W=116$ 时，$P_t$ 才是右道中心。同一个 $k$ 在两种宽度下算出的根本不是同一个位置，车辆就会在左右道之间来回穿梭。调试数据统计显示，729 帧中 $R=117$（扫描到边界仍未找到线）出现 173 次，占 24\%；$W$ 呈双峰分布，30$\sim$49 px 有 40 帧，80$\sim$119 px 有 27 帧。
 
 本文提出宽度归一化：先判断当前扫到的是一条道还是整条路，再分别计算目标点。设左右边界为 $L$、$R$，宽度 $W=R-L$，单道宽度的兜底值为 $W_0=43$，则
 \begin{equation}
@@ -385,11 +379,11 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
 为了防止单边补线把目标点推到画面外，本文还加入位置合理性检查和限幅：左边界必须位于画面左侧 3/4 内，右边界必须位于右侧 3/4 内；目标点限制在画面中心 $\pm$45 px 内，锥桶区域收紧到 $\pm$25 px。实测曾出现 $L=100$、$R=117$、$W=17$ 的异常帧，单边补线算出 $P_t=127$（画面只有 0$\sim$119），舵机从满左直接甩到满右；限幅后该问题消失。
 
 \subsection{不可信帧保持}
-人行横道、斑马线和强反光会让整幅画面变白，边界提取随即失效：中线拟合可能塌到画面最左边（$P\le 6$）或最右边（$P\ge W-6$），可信行数骤减，目标点跳到画面外。早期代码虽然计算了 \texttt{steer\_guard\_bits}，但没有真正使用，舵机仍然拿垃圾数据打方向。日志中横道前出现过 $P_t$ 从 57 跳到 86、占空比从 934 掉到 863 的情况，表现为车头突然右偏。
+人行横道、斑马线和强反光会让整幅画面变白，边界提取随即失效：中线拟合可能塌到画面最左边（$P\le 6$）或最右边（$P\ge W-6$），可信行数骤减，目标点跳到画面外。早期代码虽然计算了 \texttt{steer\_guard\_bits}，但没有真正使用，舵机仍然拿垃圾数据打方向。调试记录中横道前出现过 $P_t$ 从 57 跳到 86、占空比从 934 掉到 863 的情况，表现为车头突然右偏。
 
 本文把保护位真正接入控制：当目标点越界，或 \texttt{steer\_guard\_bits} 的 0x0004（中线贴左）、0x0008（中线贴右）、0x1000（可信行不足）任一置位时，判定本帧不可信，沿用上一次可信目标点 \texttt{pt\_good}；连续 2 s（400 个 5 ms 周期）都不可信时，才回到画面中心。这样既避免了单帧垃圾数据打方向，又能在真正丢线时让车辆回中，避免一直保持错误方向。
 
-保护位还包括宽度过窄/过宽、左右边界撞墙、起跑后 1 s 图像稳定期等。所有保护位集中在一个 16 位变量中，便于日志观察和问题定位。图~\ref{fig:width} 给出了宽度跳变与迟滞选道的示意。
+保护位还包括宽度过窄/过宽、左右边界撞墙、起跑后 1 s 图像稳定期等。所有保护位集中在一个 16 位变量中，便于调试观察和问题定位。图~\ref{fig:width} 给出了宽度跳变与迟滞选道的示意。
 
 \begin{figure}[htbp]
   \centering
@@ -559,9 +553,9 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
   \end{tabular}
 \end{table}
 
-调参阶段将 \texttt{PARAM\_TUNING} 置 1，上电不读 flash，一律使用代码默认值，避免旧参数覆盖新默认；转向中位是例外，上电仍从第 10 页恢复，保证现场校准结果不丢失。长按 S5 保存参数，长按 S3 恢复默认，长按 S4 切换图传内容。
+调参阶段将 \texttt{PARAM\_TUNING} 置 1，上电不读 flash，一律使用代码默认值，避免旧参数覆盖新默认；转向中位是例外，上电仍从第 10 页恢复，保证现场校准结果不丢失。长按 S5 保存参数，长按 S3 恢复默认。
 
-UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、目标点、扫描行号、可信行、左右边界、宽度、舵机占空比、状态机、阈值、ToF 距离、曝光、增益、图像最小/最大/平均灰度、标线结果、锥桶计数、里程、保护位等。电脑端运行 \texttt{car\_log.py} 接收并按行打印，可以离线分析宽度分布、目标点跳变和发车时序。
+调试信息通过 IPS200 分页显示，page1 用于观察图像与识别结果，page3 用于观察参数、ToF 状态和关键控制量；关键参数可保存到 flash，现场不需要外部通信。屏幕刷新和按键扫描放在主循环，避免占用 5 ms 控制中断。
 
 \subsection{赛项一：超车与会车决策}
 \label{sec:overtake}
@@ -636,22 +630,22 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
 \label{sec:debug}
 
 \subsection{开发工具链与烧录流程}
-程序在 AURIX Development Studio 中编译，使用 TASKING 编译器。编译完成后，必须确认生成的 \texttt{2024bizhang.hex} 时间戳晚于所有源文件，否则可能烧录的是旧固件。烧录使用 AURIX Flasher，烧录完成后按一次复位，否则 CPU 可能停在 halt 状态不运行。调试时不要用下载器给整车供电，下载器电流不足会导致屏幕和 WiFi 模块工作异常。
+程序在 AURIX Development Studio 中编译，使用 TASKING 编译器。编译完成后，必须确认生成的 \texttt{2024bizhang.hex} 时间戳晚于所有源文件，否则可能烧录的是旧固件。烧录使用 AURIX Flasher，烧录完成后按一次复位，否则 CPU 可能停在 halt 状态不运行。调试时不要用下载器给整车供电，下载器电流不足会导致屏幕工作异常。
 
 源码编码不统一：\texttt{Img\_analyse.c} 和 \texttt{Img\_analyse.h} 为 UTF-8，其余文件为 GBK。修改中文注释时必须按原编码写回，否则会出现乱码或编译错误。
 
-\subsection{三通道调试方法}
-本文采用“屏幕 + UDP 日志 + 在线调参”三通道调试：
+\subsection{现场调试方法}
+本文采用“屏幕观察 + 在线调参 + 离线记录”的调试方法：
 \begin{enumerate}
-  \item \textbf{屏幕}：page1 显示二值图、左右边界、补线和中线，红点表示锥桶，紫线表示参考线；page3 显示参数、WiFi 状态和 ToF 状态。屏幕适合快速判断图像算法是否工作。
-  \item \textbf{UDP 日志}：车端通过 WiFi 模块向电脑发送文本日志，电脑端按行解析。日志适合观察长时间趋势，例如宽度分布、目标点跳变、状态机迁移和发车投票。
+  \item \textbf{屏幕观察}：page1 显示二值图、左右边界、补线和中线，红点表示锥桶，紫线表示参考线；page3 显示参数和 ToF 状态。屏幕适合快速判断图像算法是否工作。
   \item \textbf{在线调参}：按键修改阈值、曝光、增益和转向微调，长按保存到 flash。在线调参避免了“改一个参数重新编译烧录”的循环，显著缩短调试时间。
+  \item \textbf{离线记录}：调试时对 page1/page3 的关键量拍照或抄录，赛后按现象与参数对照分析；比赛配置不依赖任何无线通信。
 \end{enumerate}
 
 \subsection{分模块调试}
 图像模块先调曝光和增益，使画面平均灰度处于合理范围，再调阈值系数，使二值图既能保留标线又不过度膨胀。调试时观察 page1 的边界线：左边界应为蓝色、右边界应为红色，补线为绿色/黄色；如果边界贴到画面边缘，说明阈值过低或画面过曝。
 
-循迹模块观察日志中的 $L$、$R$、$W$、$TP$ 和舵机占空比。正常单道时 $W\approx43$、$TP\approx L+21$；整条路时 $W\approx90\sim116$、$TP\approx L+67$（右道）。如果 $TP$ 在两种值之间来回跳，说明迟滞没有生效或宽度学习被污染。如果车辆持续向一侧偏，先检查摄像头是否水平，再用 \texttt{STrim} 微调。
+循迹模块观察屏幕上的 $L$、$R$、$W$、$TP$ 和舵机占空比。正常单道时 $W\approx43$、$TP\approx L+21$；整条路时 $W\approx90\sim116$、$TP\approx L+67$（右道）。如果 $TP$ 在两种值之间来回跳，说明迟滞没有生效或宽度学习被污染。如果车辆持续向一侧偏，先检查摄像头是否水平，再用 \texttt{STrim} 微调。
 
 锥桶模块观察 $CN$（有效 blob 数）、$CWD$（宽度直方图）和 \texttt{cone\_x}。正常情况下有锥桶的帧 $CN$ 应大于 2，$CWD$ 的 5$\sim$10 px 档应有计数；如果 $CN$ 长期为 0，先检查阈值和车道裁剪范围，再检查锥桶是否落在扫描行范围内。
 
@@ -664,7 +658,7 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
 \subsection{规则对应测试}
 按照比赛规则，正式比赛前需要进行直线测试，正式比赛每项两轮、每轮一次机会。本文在调试中按以下顺序验证：
 \begin{enumerate}
-  \item \textbf{静态检查}：上电后 8 路车灯全亮，3 s 后仍正常；按键、屏幕、WiFi 工作正常；
+  \item \textbf{静态检查}：上电后 8 路车灯全亮，3 s 后仍正常；按键、屏幕工作正常；
   \item \textbf{直线测试}：赛道上无锥桶和标线，车辆从起点直线行驶到终点，检查是否跑偏、是否触碰挡板；
   \item \textbf{非接触发车}：手在前方 0.5 m 内挥动，观察 $H$ 是否达到 8、车辆是否发车；车停在墙边时不得误发车；
   \item \textbf{锥桶测试}：两组锥桶按 30$^\circ$ 摆放，检查车辆是否一组变道、二组回线，转向灯是否在同侧前后同步闪烁；
@@ -703,7 +697,6 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
 
 调试和比赛时需要注意：
 \begin{enumerate}
-  \item 上电到屏幕亮约 15 s，期间黑屏正常，不要误判为死机；
   \item 烧录后必须按复位，且不要用下载器供电；
   \item 屏幕坐标有上限，\texttt{ips200\_show\_int} 的起始 $x$ 加位数乘 8 不得超过 232，否则触发断言；
   \item flash 只有 0$\sim$11 页，参数页用 11、备份页用 10，不要写其他页；
@@ -715,7 +708,7 @@ UDP 日志每 10 个主循环发送一行，包含 30 余个字段：帧号、�
 \label{sec:conclusion}
 
 \subsection{工作总结}
-本文面向 2026 江苏省大学生机器人大赛 403 无人车多车交互赛，设计并实现了一套以 TC264D 双核微控制器为核心的自主无人车系统。系统采用 120$\times$70 灰度摄像头完成赛道感知，采用 DL1B 激光测距实现非接触发车，采用 WiFi SPI 建立调试通道；控制层采用变增益 PD 转向和增量式 PID 速度闭环；行为层实现了双车道循迹、锥形标绕行、菱形减速和人行横道停车 5 s 等赛项二任务；此外，赛项一分支实现了基于车道半区白点占比的前车/对向车检测、三态超车状态机和转向灯/大灯联动。
+本文面向 2026 江苏省大学生机器人大赛 403 无人车多车交互赛，设计并实现了一套以 TC264D 双核微控制器为核心的自主无人车系统。系统采用 120$\times$70 灰度摄像头完成赛道感知，采用 DL1B 激光测距实现非接触发车，采用 IPS200 屏幕和按键完成现场调试；控制层采用变增益 PD 转向和增量式 PID 速度闭环；行为层实现了双车道循迹、锥形标绕行、菱形减速和人行横道停车 5 s 等赛项二任务；此外，赛项一分支实现了基于车道半区白点占比的前车/对向车检测、三态超车状态机和转向灯/大灯联动。
 
 针对双车道虚线导致的宽度跳变，本文提出宽度归一化与迟滞选道，把“一条道”和“整条路”分开处理，避免了同一公式在两种宽度下算出不同位置的问题。针对反光和横道导致的边界污染，本文提出不可信帧保持，用保护位和上次可信目标点替代单帧垃圾数据。针对红色锥形标在灰度图中与车道线同为白色的问题，本文利用白段宽度和二维 blob 跟踪实现检测，并用锁存固定时长完成一次变道。针对 ToF 的 8192 无效值，本文改为只消费新样本，并用“布防 + 滑动窗口投票”实现非接触发车。
 
@@ -867,7 +860,6 @@ case OVT_BACK:
     左轮 PWM / DIR & P21\_4 / P21\_5 & 编码器 TIM2（P33\_7/P33\_6） \\
     摄像头数据 & P00\_0$\sim$P00\_7 & VSYNC P02\_0，PCLK P02\_1 \\
     DL1B I\textsuperscript{2}C & P33\_4 / P33\_5 & 软件 I\textsuperscript{2}C \\
-    WiFi SPI & P22\_3 / P22\_0 / P22\_1 / P22\_2 & INT P15\_8，RST P23\_1 \\
     IPS200 & P15\_3 / P15\_5 / P15\_1 / P15\_0 / P15\_2 & SPI2 \\
     按键 & P20\_6 / P20\_7 / P11\_2 / P11\_3 / P33\_12 & S1$\sim$S5 \\
     左前 / 右前转向灯 & P02\_4 / P02\_5 & 高电平亮 \\

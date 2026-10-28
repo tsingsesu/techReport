@@ -255,37 +255,37 @@
 
 % -----------------------------------------------------------------------------
 % 技术报告使用授权说明
-%   若 MaiFigs/Mai授权页扫描.pdf 或 .jpg 存在，整页插图（签名页扫描件）；
-%   否则排版出空白签名栏，供打印后手写签字再扫描替换。
+%   签名不采用整页扫描替换，直接在页内排版电子签名：
+%     member1 = 张冠良，member2 = 肖通，member3 = 张子傲，teacher = 樊卫华
+%   图片位于 doc/img/，相对本文件为 ../img/
 % -----------------------------------------------------------------------------
+\newcommand{\MaiSignature}[2][1.25cm]{%
+  \raisebox{-0.35cm}{\includegraphics[height=#1]{#2}}%
+}
+
 \newcommand{\MaiAuthorization}{%
   \clearpage
   \thispagestyle{empty}%
-  \IfFileExists{MaiFigs/Mai授权页扫描.pdf}{%
-    \noindent\includegraphics[width=\paperwidth,height=\paperheight]{MaiFigs/Mai授权页扫描.pdf}%
-  }{%
-    \IfFileExists{MaiFigs/Mai授权页扫描.jpg}{%
-      \noindent\includegraphics[width=\paperwidth,height=\paperheight]{MaiFigs/Mai授权页扫描.jpg}%
-    }{%
-      \begin{center}
-      \vspace*{1.2cm}
-      {\heiti\zihao{2} 关于技术报告使用授权的说明\par}
-      \end{center}
-      \vspace{1.2cm}
-      {\songti\zihao{-4}
-      本人完全了解 2026 江苏省大学生机器人大赛关于保留、使用技术报告和研究论文的规定，即：参赛作品著作权归参赛者本人和比赛组委会共同所有，比赛组委会可以在相关主页上收录并公开参赛作品的设计方案、技术报告以及参赛机器人的视频、图像资料，并将相关内容编纂收录在组委会出版论文集中。\par}
-      \vspace{4.5cm}
-      \begin{flushright}
-      \songti\zihao{5}
-      \renewcommand{\arraystretch}{2.0}%
-      \begin{tabular}{@{}l@{}}
-        参赛队员签名：\underline{\makebox[4.5cm][l]{}} \\
-        带队教师签名：\underline{\makebox[4.5cm][l]{}} \\
-        日\hspace{2em}期：\underline{\makebox[4.5cm][l]{}} \\
-      \end{tabular}
-      \end{flushright}
-    }%
-  }%
+  \begin{center}
+  \vspace*{1.2cm}
+  {\heiti\zihao{2} 关于技术报告使用授权的说明\par}
+  \end{center}
+  \vspace{1.2cm}
+  {\songti\zihao{-4}
+  本人完全了解 2026 江苏省大学生机器人大赛关于保留、使用技术报告和研究论文的规定，即：参赛作品著作权归参赛者本人和比赛组委会共同所有，比赛组委会可以在相关主页上收录并公开参赛作品的设计方案、技术报告以及参赛机器人的视频、图像资料，并将相关内容编纂收录在组委会出版论文集中。\par}
+  \vfill
+  \begin{flushright}
+  {\songti\zihao{5}
+  \renewcommand{\arraystretch}{1.3}%
+  \begin{tabular}{@{}l@{\hspace{0.3em}}l@{}}
+    参赛队员签名： & \MaiSignature{MaiFigs/MaiSigZhang.png} \\[1.1em]
+                   & \MaiSignature{MaiFigs/MaiSigXiao.png} \\[1.1em]
+                   & \MaiSignature{MaiFigs/MaiSigZhangZiao.png} \\[1.0em]
+    带队教师签名： & \MaiSignature{MaiFigs/MaiSigFan.png} \\[1.0em]
+    日\hspace{2em}期： & \underline{\makebox[4.5cm][c]{2026.10.28}} \\
+  \end{tabular}}
+  \end{flushright}
+  \vspace{0.8cm}
 }
 
 % -----------------------------------------------------------------------------
