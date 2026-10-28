@@ -124,25 +124,9 @@
 \subsection{双核任务划分与实时调度}
 TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、计算密集任务放 CPU1”的原则划分任务。CPU0 负责 5 ms 控制中断、10 ms 灯光与发车判定、主循环中的按键扫描和屏幕刷新；CPU1 负责摄像头帧处理、ToF 采样和图像算法。两核通过全局变量和帧完成标志通信，CPU1 每处理完一帧将 \texttt{mt9v03x\_finish\_flag} 清零，CPU0 只在标志置位时读取最新结果，避免读写同一帧造成撕裂。
 
-中断调度如表~\ref{tab:schedule} 所示。5 ms 中断承担转向舵机输出和速度闭环，是控制系统的核心节拍；10 ms 中断承担车灯闪烁和 ToF 发车投票。转向与速度分开在不同中断中执行，避免一次中断内计算量过大导致抖动。
+中断按 5 ms 和 10 ms 两级调度：5 ms 中断承担转向舵机输出和速度闭环，是控制系统的核心节拍；10 ms 中断承担车灯闪烁、ToF 发车投票和灯光刷新。图像处理由摄像头帧完成标志触发，屏幕与按键放在主循环。转向与速度分开在不同中断中执行，避免一次中断内计算量过大导致抖动。
 
-\begin{table}[htbp]
-  \centering
-  \caption{中断与任务调度}
-  \label{tab:schedule}
-  \begin{tabular}{lll}
-    \toprule
-    周期 & 任务 & 说明 \\
-    \midrule
-    5 ms & 速度闭环、电机输出 & 编码器采样、增量式 PID、PWM 输出 \\
-    5 ms & 转向控制 & 目标点计算、变增益 PD、舵机 PWM \\
-    10 ms & 车灯控制 & 转向灯闪烁、刹车灯、大灯 \\
-    10 ms & ToF 发车判定 & 消费新样本、12 点滑动窗口投票 \\
-    帧同步 & 图像处理 & 二值化、边界提取、锥桶与标线识别 \\
-    主循环 & 屏幕、按键 & 人机交互与参数整定 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+
 
 \subsection{比赛流程与状态机}
 车辆上电后首先进入初始化阶段：完成时钟、舵机中位、电机、编码器、ToF、摄像头、按键和车灯初始化。初始化期间 8 路车灯全部点亮，满足规则“开机后所有车灯亮起超过 3 s”的要求。随后车辆进入待发车状态，转向舵机保持中位，电机不输出。
@@ -181,7 +165,7 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.68\textwidth]{MaiFigs/Mai俯视图.jpg}
+  \includegraphics[width=0.50\textwidth]{MaiFigs/Mai俯视图.jpg}
   \caption{整车俯视布局与尺寸实测（单位：cm）}
   \label{fig:vehicle}
 \end{figure}
@@ -189,12 +173,7 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
 \subsection{传感器安装}
 摄像头通过竖直安装杆固定在车头正上方，镜头距地面约 25 cm，向下俯视赛道；光轴与水平面约成一定俯角，使画面近端覆盖车头前方约 0.3 m、远端覆盖约 1.5 m。镜头前加装飞思尔偏振片，用于抑制赛道反光，但会损失约 50\%~70\% 的进光量。摄像头安装支架需要保证左右水平，否则画面中的赛道中线会整体偏移，表现为车辆持续向一侧跑偏。DL1B 安装在车头前方，镜头朝前，用于检测挥手动作；其安装高度和角度需要避开地面反射和车头结构遮挡。车灯按左前、右前、左后、右后成对布置，刹车灯位于车尾，前大灯位于车头两侧。
 
-\begin{figure}[htbp]
-  \centering
-  \includegraphics[width=0.40\textwidth]{MaiFigs/Mai高度.jpg}
-  \caption{摄像头安装高度与改造前整车高度实测（单位：cm；杆体截短后整车约 25 cm）}
-  \label{fig:sensors}
-\end{figure}
+
 
 \subsection{车灯布置与可维护性}
 规则要求同侧前后转向灯同频率闪亮，恢复直行时熄灭；减速或停车时后刹车灯亮起；会车时前大灯闪烁 2$\sim$3 次。本文按“左 = 左前 + 左后”“右 = 右前 + 右后”成对控制，转向灯以约 130 ms 半周期闪烁。车灯驱动采用 GPIO 推挽输出，高电平点亮。
@@ -204,30 +183,9 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
 \section{硬件设计}
 \label{sec:hardware}
 
-系统主要器件的选型与参数如表~\ref{tab:devices} 所示，后文按主控、感知、执行、通信和供电分别说明。
+系统主要器件包括 TC264D 主控、MT9V034 摄像头、DL1B 测距、DRV8701E 驱动、SU400 舵机和 3S 锂聚合物电池；完整选型与参数见附录 B 表 B.1。后文按主控、感知、执行、人机接口和供电分别说明。
 
-\begin{table}[htbp]
-  \centering
-  \caption{主要器件选型与参数}
-  \label{tab:devices}
-  \begin{tabular}{lll}
-    \toprule
-    器件 & 型号 / 规格 & 作用 \\
-    \midrule
-    主控 & Infineon TC264D，双核 200 MHz & 感知、决策与控制 \\
-    核心板 & 仿逐飞 TC264 自制板 & 主控最小系统 \\
-    主板 & 逐飞通用学习母板 V3.1 & 外设接口与供电分配 \\
-    电机驱动 & 仿逐飞 DRV8701E 双路 H 桥 & 左右后轮驱动 \\
-    车模 & 逐飞科技 C 车模 & 前轮转向、后轮双电机驱动 \\
-    舵机 & SU400 & 前轮转向 \\
-    编码器 & 普地 1024 线 mini，2 个 & 左右轮速度与里程 \\
-    摄像头 & 总钻风 MT9V034 + 飞思尔偏振片 & 赛道与目标感知 \\
-    测距 & DL1B（VL53L1X） & 非接触发车与前方测距 \\
-    显示 & IPS200 全彩屏（SPI） & 参数整定与状态监视 \\
-    电池 & 格氏 ACE 3S 2200 mAh 30C & 11.1 V 动力电源 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+
 
 \subsection{主控与最小系统}
 主控采用 Infineon AURIX TC264D 双核微控制器，主频 200 MHz，片内集成多路 PWM、正交编码器接口、SPI、I\textsuperscript{2}C、DMA 和定时器单元\upcite{tc26x}。选择该芯片的原因有三点：其一，双核结构可以把图像处理与控制任务分离，保证 5 ms 控制周期；其二，PWM、编码器和 DMA 资源丰富，可同时驱动舵机、双电机、摄像头和显示屏；其三，逐飞开源库提供了较完整的底层驱动\upcite{seekfree}，缩短了开发周期。
@@ -258,7 +216,7 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
 整车由格氏 ACE 系列 3S 2200 mAh 30C 锂聚合物电池供电，标称电压 11.1 V。主控板、摄像头、ToF 和屏幕由板上稳压电路供电；电机和舵机由电池直接供电。车灯共 8 路，全部为高电平点亮，其中左前转向 P02\_4、右前转向 P02\_5、左后转向 P02\_6、右后转向 P02\_7、左后刹车 P20\_11、右后刹车 P00\_8、左前大灯 P20\_13、右前大灯 P20\_14。前大灯引脚尚待最终确认，目前借用刹车灯附近引脚。
 
 \subsection{引脚分配与硬件问题}
-关键引脚分配见附录 B 表 B.1。正文只列出最容易出问题的几组：舵机 PWM 为 P33\_9；右轮 PWM/DIR 为 P21\_2/P21\_3，编码器为 P20\_3/P20\_0；左轮 PWM/DIR 为 P21\_4/P21\_5，编码器为 P33\_7/P33\_6；摄像头数据为 P00\_0$\sim$P00\_7；ToF 软件 I\textsuperscript{2}C 为 P33\_4/P33\_5。完整表格放在附录，便于硬件维护时查阅。
+关键引脚分配见附录 B 表 B.2。正文只列出最容易出问题的几组：舵机 PWM 为 P33\_9；右轮 PWM/DIR 为 P21\_2/P21\_3，编码器为 P20\_3/P20\_0；左轮 PWM/DIR 为 P21\_4/P21\_5，编码器为 P33\_7/P33\_6；摄像头数据为 P00\_0$\sim$P00\_7；ToF 软件 I\textsuperscript{2}C 为 P33\_4/P33\_5。完整表格放在附录，便于硬件维护时查阅。
 
 硬件调试中遇到的主要问题如下：
 \begin{enumerate}
@@ -272,29 +230,9 @@ TC264D 具有两个 TriCore 内核，本文按“时间关键任务放中断、�
 \label{sec:software}
 
 \subsection{软件总体架构}
-软件采用“前后台 + 中断”的结构。CPU0 主循环负责按键和屏幕；5 ms 定时中断负责速度环和转向环；10 ms 定时中断负责车灯和 ToF 判定。CPU1 主循环等待摄像头帧完成标志，依次执行阈值计算、二值化、边界提取、标线识别、锥桶识别、反光抑制和目标点计算，如图~\ref{fig:pipeline} 所示。
+软件采用“前后台 + 中断”的结构。CPU0 主循环负责按键和屏幕；5 ms 定时中断负责速度环和转向环；10 ms 定时中断负责车灯和 ToF 判定。CPU1 主循环等待摄像头帧完成标志，依次执行阈值计算、二值化、边界提取、标线识别、锥桶识别、反光抑制和目标点计算，如图 D.2 所示。
 
-\begin{figure}[htbp]
-  \centering
-  \begin{tikzpicture}[
-    node distance=4mm and 4mm,
-    box/.style={draw,rounded corners,minimum width=3.35cm,minimum height=0.7cm,align=center,font=\zihao{-5}},
-    arr/.style={-{Latex[length=2mm]},thick}]
-    \node[box] (a) {帧完成标志};
-    \node[box,right=of a] (b) {迭代阈值};
-    \node[box,right=of b] (c) {二值化};
-    \node[box,right=of c] (d) {边界 / 补线};
-    \node[box,below=of d] (e) {中线拟合};
-    \node[box,left=of e] (f) {标线识别};
-    \node[box,left=of f] (g) {锥桶识别};
-    \node[box,left=of g] (h) {反光抑制 / 目标点};
-    \draw[arr] (a) -- (b); \draw[arr] (b) -- (c); \draw[arr] (c) -- (d);
-    \draw[arr] (d) -- (e);
-    \draw[arr] (e) -- (f); \draw[arr] (f) -- (g); \draw[arr] (g) -- (h);
-  \end{tikzpicture}
-  \caption{CPU1 图像处理流程}
-  \label{fig:pipeline}
-\end{figure}
+
 
 各模块之间通过全局数组和标志变量传递数据：\texttt{Left\_Line[61]}、\texttt{Right\_Line[61]}、\texttt{Mid\_Line[61]} 保存逐行边界和中线，\texttt{Width\_Real[61]} 保存宽度，\texttt{Result\_Far\_Row} 保存本帧最远可信行，\texttt{cone\_cnt}、\texttt{cone\_x}、\texttt{mk\_cw\_seen}、\texttt{mk\_dia\_seen} 等保存识别结果。控制层只读取这些结果，不直接访问图像，降低了模块耦合。
 
@@ -383,35 +321,9 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
 
 本文把保护位真正接入控制：当目标点越界，或 \texttt{steer\_guard\_bits} 的 0x0004（中线贴左）、0x0008（中线贴右）、0x1000（可信行不足）任一置位时，判定本帧不可信，沿用上一次可信目标点 \texttt{pt\_good}；连续 2 s（400 个 5 ms 周期）都不可信时，才回到画面中心。这样既避免了单帧垃圾数据打方向，又能在真正丢线时让车辆回中，避免一直保持错误方向。
 
-保护位还包括宽度过窄/过宽、左右边界撞墙、起跑后 1 s 图像稳定期等。所有保护位集中在一个 16 位变量中，便于调试观察和问题定位。图~\ref{fig:width} 给出了宽度跳变与迟滞选道的示意。
+保护位还包括宽度过窄/过宽、左右边界撞墙、起跑后 1 s 图像稳定期等。所有保护位集中在一个 16 位变量中，便于调试观察和问题定位。图 D.3 给出了宽度跳变与迟滞选道的示意。
 
-\begin{figure}[htbp]
-  \centering
-  \begin{tikzpicture}[scale=0.92,transform shape,font=\zihao{5}]
-    % 左图：单道
-    \draw[thick] (0,0) rectangle (6,3.2);
-    \draw[thick] (0,1.6) -- (6,1.6);
-    \draw[dashed,thick] (3,0) -- (3,3.2);
-    \node at (1.5,0.8) {左道};
-    \node at (4.5,0.8) {右道};
-    \draw[<->] (0,2.45) -- (3,2.45) node[midway,above] {$W\approx43$ px};
-    % 右图：整条路
-    \begin{scope}[xshift=8cm]
-      \draw[thick] (0,0) rectangle (6,3.2);
-      \draw[thick] (0,1.6) -- (2.2,1.6);
-      \draw[thick] (3.8,1.6) -- (6,1.6);
-      \draw[dashed,thick] (3,0) -- (3,1.6);
-      \draw[dashed,thick] (3,1.6) -- (3,3.2);
-      \node at (1.5,0.8) {左道};
-      \node at (4.5,0.8) {右道};
-      \draw[<->] (0,2.45) -- (6,2.45) node[midway,above] {$W\approx90\sim116$ px};
-    \end{scope}
-    \node at (3,-0.6) {(a) 虚线当前行有白段};
-    \node at (11,-0.6) {(b) 虚线当前行是断口};
-  \end{tikzpicture}
-  \caption{虚线断口导致的赛道宽度跳变}
-  \label{fig:width}
-\end{figure}
+
 
 \subsection{转向控制}
 转向控制采用变增益位置式 PD。设目标点为 $P_t$，画面中心为 $P_0=60$，误差 $e=P_t-P_0$，则
@@ -454,7 +366,7 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
 
 早期版本要求 blob 至少占 2 行，但锥形标白环只有约 1 cm 高，二值化后往往只有 1 行，导致大量漏检；改为至少 1 行后，锥桶计数从 1$\sim$2 增加到 6$\sim$11。另一个问题是 \texttt{cone\_x} 取“最靠下的 blob”，而白环是碎片化的，相邻帧可能在 61、102、79、37 之间跳动，导致绕行方向反复变化；改为近端 blob 平均后，方向判断稳定得多。
 
-绕行决策采用锁存式状态机，如图~\ref{fig:cone} 所示。第一次满足 \texttt{cone\_ok} 且 $N\ge2$ 时，比较锥桶左右两侧的剩余空间：
+绕行决策采用锁存式状态机，如图 D.4 所示。第一次满足 \texttt{cone\_ok} 且 $N\ge2$ 时，比较锥桶左右两侧的剩余空间：
 \begin{equation}
   \mathrm{dir}=
   \begin{cases}
@@ -465,25 +377,7 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
 \end{equation}
 其中 $L_{\mathrm{room}}=\texttt{cone\_x}-L$，$R_{\mathrm{room}}=R-\texttt{cone\_x}$。边界不可信时，改为按锥桶位于画面中心左侧还是右侧决定方向。确定方向后，锁存 200 个 5 ms 周期（1 s），期间目标点固定为 $P_0+\mathrm{dir}\times22$，不再根据误差持续修正。1 s 后解除锁存，回到循迹；锥桶连续 1 s 看不见后，才允许下一组锥桶触发新的变道。
 
-\begin{figure}[htbp]
-  \centering
-  \begin{tikzpicture}[
-    node distance=5mm,
-    box/.style={draw,rounded corners,minimum width=3.4cm,minimum height=0.8cm,align=center,font=\zihao{5}},
-    arr/.style={-{Latex[length=2mm]},thick}]
-    \node[box] (see) {看到锥桶\\$N\ge2$};
-    \node[box,right=of see] (dir) {比较左右空间\\确定变道方向};
-    \node[box,right=of dir] (hold) {锁存 1 s\\目标点 $P_0\pm22$};
-    \node[box,below=of hold] (back) {解除锁存\\回到循迹};
-    \node[box,below=of dir] (clear) {锥桶离开 1 s\\允许下一组};
-    \draw[arr] (see) -- (dir);
-    \draw[arr] (dir) -- (hold);
-    \draw[arr] (hold) -- (back);
-    \draw[arr] (back) -- (clear);
-  \end{tikzpicture}
-  \caption{锥形标锁存绕行流程}
-  \label{fig:cone}
-\end{figure}
+
 
 这里有一个重要的控制经验：变道的量只能靠时间，不能靠误差。因为检测到的车道是跟着车走的：车往左挪，车道在画面里也往左挪，目标点与画面中心的误差重新出现，控制器就会一直往左打。实测中曾出现连续左满舵 8 次、越转越左；改为固定 1 s 锁存后，一次只变一道，行为可预测。当前方案仍是近似方案，锥形标实际是一组斜跨两条道的斜线，更精确的做法是把所有 blob 拟合为直线 $x=a\cdot row+b$，让车辆沿斜线平行行驶。
 
@@ -496,27 +390,9 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
 \end{enumerate}
 人行横道是横跨车道的连续白带，菱形是两条斜边夹一条中线，停车线是一条靠近车头的单白带，三者在行宽、白点数和连续行数上都有区别。整幅过曝（平均灰度大于 190）或过暗（小于 10）时，标线识别直接返回，避免起跑瞬间的过曝误报。
 
-标线状态机如图~\ref{fig:marker} 所示。状态 0 为空闲；连续 8 帧看到菱形后进入状态 1（慢行）；状态 1 中，连续 15 帧看到人行横道且近端行号不小于 45 时进入状态 2（停车计时）；停车 1000 个 5 ms 周期（5 s）后进入状态 3（已通过）；人行横道消失后回到状态 0。菱形消失且前进里程超过 60 cm 时，也从状态 1 回到状态 0，恢复原速。
+标线状态机如图 D.5 所示。状态 0 为空闲；连续 8 帧看到菱形后进入状态 1（慢行）；状态 1 中，连续 15 帧看到人行横道且近端行号不小于 45 时进入状态 2（停车计时）；停车 1000 个 5 ms 周期（5 s）后进入状态 3（已通过）；人行横道消失后回到状态 0。菱形消失且前进里程超过 60 cm 时，也从状态 1 回到状态 0，恢复原速。
 
-\begin{figure}[htbp]
-  \centering
-  \begin{tikzpicture}[
-    node distance=1.4cm,
-    st/.style={draw,circle,minimum size=1.5cm,align=center,font=\zihao{5}},
-    arr/.style={-{Latex[length=2mm]},thick}]
-    \node[st] (s0) {0\\空闲};
-    \node[st,right=of s0] (s1) {1\\慢行};
-    \node[st,right=of s1] (s2) {2\\停车};
-    \node[st,right=of s2] (s3) {3\\通过};
-    \draw[arr] (s0) -- node[above,font=\zihao{6}]{菱形 8 帧} (s1);
-    \draw[arr] (s1) -- node[above,font=\zihao{6}]{横道 15 帧} (s2);
-    \draw[arr] (s2) -- node[above,font=\zihao{6}]{5 s} (s3);
-    \draw[arr] (s3) to[bend left=35] node[below,font=\zihao{6}]{横道消失} (s0);
-    \draw[arr] (s1) to[bend right=35] node[below,font=\zihao{6}]{菱形消失且前进 60 cm} (s0);
-  \end{tikzpicture}
-  \caption{道路标线状态机}
-  \label{fig:marker}
-\end{figure}
+
 
 状态 1 中速度降为原速的 50\%，状态 2 中电机输出 0，车辆自然滑停。刹车灯在状态 1 和状态 2 亮起，满足规则“减速或停车时后刹车灯亮起”的要求。当前实现是“进入状态 1 直接降一半”，还不是规则要求的“逐渐减速”；后续可以按里程或时间分 3$\sim$5 档逐级降速，避免扣分。
 
@@ -534,24 +410,9 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
 布防需要前方至少 1 s 没有有效近距样本；布防后挥手，约 0.4$\sim$0.5 s 内累计 8 次命中即发车，满足非接触发车要求。屏幕 page3 最后一行显示 \texttt{To（当前距离）A（是否布防）H（命中数）}，便于现场判断：\texttt{A=0} 表示还没布防，\texttt{A=1} 可以挥手，\texttt{H} 从 0 涨到 8 即发车。
 
 \subsection{调试与参数管理}
-系统提供 5 个可在线整定的参数，如表~\ref{tab:params} 所示。参数保存在 flash 第 11 页，备份页为第 10 页；上电时先检查有效标记，再逐项校验范围，不合法则退回代码默认值。早期版本曾把备份页写成 17，而驱动只支持 0$\sim$11 页，触发断言后 PWM、PIT 和外部中断全部关闭，表现为屏幕仍刷新但车不动。改为第 10 页后问题解决。
+系统提供 5 个可在线整定的参数，如附录 D 表 D.2 所示。参数保存在 flash 第 11 页，备份页为第 10 页；上电时先检查有效标记，再逐项校验范围，不合法则退回代码默认值。早期版本曾把备份页写成 17，而驱动只支持 0$\sim$11 页，触发断言后 PWM、PIT 和外部中断全部关闭，表现为屏幕仍刷新但车不动。改为第 10 页后问题解决。
 
-\begin{table}[htbp]
-  \centering
-  \caption{在线整定参数}
-  \label{tab:params}
-  \begin{tabular}{llll}
-    \toprule
-    参数 & 作用 & 默认值 & 范围 \\
-    \midrule
-    \texttt{zyuzhi} & 二值化阈值系数 & 95 & 20$\sim$255 \\
-    \texttt{Differ} & 阈值偏置 & 0 & $-50\sim50$ \\
-    曝光时间 & 摄像头曝光 & 2300 & 60$\sim$10000 \\
-    增益 & 摄像头模拟增益 & 64 & 16$\sim$124 \\
-    \texttt{STrim} & 转向微调 & 16 & $-60\sim60$ \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+
 
 调参阶段将 \texttt{PARAM\_TUNING} 置 1，上电不读 flash，一律使用代码默认值，避免旧参数覆盖新默认；转向中位是例外，上电仍从第 10 页恢复，保证现场校准结果不丢失。长按 S5 保存参数，长按 S3 恢复默认。
 
@@ -576,50 +437,15 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
 正常赛道上两条边线之间只有一条细虚线，左右半车道白点占比都较低；浅色车进入某一半车道时，该半区占比会明显升高。设车辆靠右行驶（\texttt{OVT\_OWN\_RIGHT=1}），则右半区对应本车道前车，左半区对应对向车。当前判据为：本车道白点占比不小于 45\%，且最近行号不小于 40，认为前方有同向车；对向半区占比不小于 45\%，认为有对向车。
 
 \subsubsection{超车与会车状态机}
-超车状态机如图~\ref{fig:overtake} 所示，分为 IDLE、GO、BACK 三态。IDLE 下，若本车道连续 20 个 5 ms 周期（100 ms）检测到前车且不在冷却期，进入 GO；GO 把转向参考点向左平移 25 px，同时点亮左转向灯，保持 400 个周期（2 s）；随后进入 BACK，参考点回到本道中心，点亮右转向灯，保持 300 个周期（1.5 s）；BACK 结束后回到 IDLE，并进入 300 个周期（1.5 s）冷却，避免同一辆车反复触发。参考点的平移量 \texttt{ovt\_offset} 直接叠加到 PD 控制器的目标中心上，正值对应向左借道。
+超车状态机如图 D.1 所示，分为 IDLE、GO、BACK 三态。IDLE 下，若本车道连续 20 个 5 ms 周期（100 ms）检测到前车且不在冷却期，进入 GO；GO 把转向参考点向左平移 25 px，同时点亮左转向灯，保持 400 个周期（2 s）；随后进入 BACK，参考点回到本道中心，点亮右转向灯，保持 300 个周期（1.5 s）；BACK 结束后回到 IDLE，并进入 300 个周期（1.5 s）冷却，避免同一辆车反复触发。参考点的平移量 \texttt{ovt\_offset} 直接叠加到 PD 控制器的目标中心上，正值对应向左借道。
 
-\begin{figure}[htbp]
-  \centering
-  \begin{tikzpicture}[
-    node distance=1.3cm,
-    st/.style={draw,circle,minimum size=1.55cm,align=center,font=\zihao{-5}},
-    box/.style={draw,rounded corners,minimum width=4.2cm,minimum height=0.9cm,align=center,font=\zihao{-5}},
-    arr/.style={-{Latex[length=2mm]},thick}]
-    \node[st] (idle) {IDLE\\巡航};
-    \node[st,right=of idle] (go) {GO\\左借道};
-    \node[st,right=of go] (back) {BACK\\回线};
-    \node[box,below=of go] (onc) {任意状态：对向半区 $\ge45\%$\\大灯闪 3 次，冷却 4 s};
-    \draw[arr] (idle) -- node[above,font=\zihao{6}]{前车 100 ms} (go);
-    \draw[arr] (go) -- node[above,font=\zihao{6}]{2 s} (back);
-    \draw[arr] (back) to[bend left=38] node[below,font=\zihao{6}]{1.5 s} (idle);
-  \end{tikzpicture}
-  \caption{赛项一超车/会车状态机}
-  \label{fig:overtake}
-\end{figure}
+
 
 会车分支独立于超车三态：只要对向半区白点占比不小于 45\%，就向灯光模块发出 3 次前大灯闪烁请求，并在 4 s 内不再重复。灯光模块以 100 ms 半周期翻转大灯，完成 3 次闪烁；转向灯以 130 ms 半周期闪烁，频率约 3.8 Hz。超车时左、右转向灯分别由 \texttt{ovt\_light=1/2} 直接指定，保证同侧前后灯成对亮灭；会车时只闪大灯，不改变转向灯。
 
-关键参数如表~\ref{tab:overtake} 所示。
+关键参数见附录 D 表 D.1。
 
-\begin{table}[htbp]
-  \centering
-  \caption{赛项一超车/会车关键参数}
-  \label{tab:overtake}
-  \begin{tabular}{lll}
-    \toprule
-    参数 & 取值 & 作用 \\
-    \midrule
-    \texttt{OVT\_OWN\_RIGHT} & 1 & 本车走右道，左半区是对向车道 \\
-    \texttt{OVT\_LANE\_PX} & 25 px & 借道时参考点左移量 \\
-    \texttt{OVT\_ENTER\_TICKS} & 20（100 ms） & 前车确认时间 \\
-    \texttt{OVT\_PASS\_TICKS} & 400（2.0 s） & 左借道保持时间 \\
-    \texttt{OVT\_BACK\_TICKS} & 300（1.5 s） & 回线保持时间 \\
-    \texttt{OVT\_COOL\_TICKS} & 300（1.5 s） & 超车后冷却时间 \\
-    \texttt{CAR\_PCT\_HI} & 45\% & 判定有车的白点占比阈值 \\
-    \texttt{CAR\_NEAR\_ROW} & 40 & 判定前车已靠近的行号阈值 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+
 
 \subsubsection{调试方法与当前限制}
 调试时先保持 \texttt{OVERTAKE\_ENABLE=0}，在 page3 观察 \texttt{car\_pct\_l} 和 \texttt{car\_pct\_r}：空赛道两个值都应较低；把遥控车放到本车道前方，右半区应明显升高；把车放到对向车道，左半区应升高。根据实测调整 \texttt{CAR\_PCT\_HI} 和 \texttt{CAR\_NEAR\_ROW}，确认不误触发后，再把总开关改为 1，检查左转向灯、右转向灯和前大灯的时序。该分支的舵机中位按 857 标定，而赛项二分支按 917 标定；两套代码切换烧录时必须重新校准转向中位，否则会持续跑偏。
@@ -667,27 +493,9 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
   \item \textbf{完整流程}：从发车到终点连续跑完，记录扣分项和用时。
 \end{enumerate}
 
-测试项目与判据如表~\ref{tab:test} 所示。表中只列出判据，具体用时和扣分以现场实测为准。
+测试时按上述步骤逐项记录；具体用时和扣分以现场实测为准。
 
-\begin{table}[htbp]
-  \centering
-  \caption{测试项目与判据}
-  \label{tab:test}
-  \begin{tabular}{p{0.22\textwidth}p{0.34\textwidth}p{0.34\textwidth}}
-    \toprule
-    测试项 & 观察量 & 通过判据 \\
-    \midrule
-    直线循迹 & $TP$、舵机占空比、车辆轨迹 & 不压边线、不碰挡板，$TP$ 无大幅跳变 \\
-    非接触发车 & $A$、$H$、\texttt{start\_trigger} & 挥手后 $H$ 达到 8，静止时不误触发 \\
-    锥桶绕行 & $CN$、\texttt{cone\_x}、转向灯 & 第一组变道、第二组回线，灯同步闪烁 \\
-    超车 & \texttt{car\_pct\_r}、\texttt{ovt\_state}、转向灯 & 前车持续 100 ms 后左借道 2 s，回线右灯 1.5 s \\
-    会车 & \texttt{car\_pct\_l}、大灯 & 对向半区 $\ge45\%$ 时大灯闪 3 次，4 s 内不重复 \\
-    菱形减速 & $DI$、$MK$、速度 & 看到菱形后进入慢行，刹车灯亮 \\
-    横道停车 & $CW$、$MK$、里程 & 停车线前停车 5 s，不压线 \\
-    完整流程 & 用时、扣分 & 全程无人工干预，按规定路线通过终点 \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+
 
 \subsection{典型问题与处理}
 调试中遇到的问题大多不是“代码写错”，而是“模型与场景不匹配”。最典型的四类是：虚线断口导致宽度在 43/116 px 之间跳变，用宽度归一化加迟滞解决；横道和反光导致边界污染、目标点跳到画面外，用不可信帧保持解决；ToF 的 8192 无效值被误当作遮挡，改为只消费测量完成的新样本；锥桶白环只有约 1 行高，要求 2 行会全部漏检，改为至少 1 行。完整的问题、根因与处理清单见附录 C 表 C.1。
@@ -695,14 +503,6 @@ $W_{\mathrm{ema}}$ 只学习 $W\le 70$ 的单道样本，避免被整条路的 1
 \subsection{当前状态与注意事项}
 截至本文撰写时，双车道循迹和锥形标绕行已能基本完成，但仍处于参数整定阶段：锥桶识别率在部分光照和锥桶角度下仍有波动，镜头偏振片带来的进光量损失进一步压缩了阈值调节余量；菱形减速目前是“直接降一半”，还不是规则要求的“逐渐减速”；长时间直道存在轻微右偏，已通过转向微调补偿，后续需要从摄像头安装和舵机中位两方面做机械对中；赛项一的车辆检测与超车/会车状态机已实现，但 \texttt{OVERTAKE\_ENABLE} 默认 0，需标定车辆检测阈值后开启；暗色车壳、虚线回线时机和会车后左道行驶仍需完善。
 
-调试和比赛时需要注意：
-\begin{enumerate}
-  \item 烧录后必须按复位，且不要用下载器供电；
-  \item 屏幕坐标有上限，\texttt{ips200\_show\_int} 的起始 $x$ 加位数乘 8 不得超过 232，否则触发断言；
-  \item flash 只有 0$\sim$11 页，参数页用 11、备份页用 10，不要写其他页；
-  \item 换场地或换光照后必须重新整定阈值、曝光和增益，不能沿用旧参数；
-  \item 修改源码后必须重新编译，确认 hex 时间戳晚于源文件，避免跑旧固件。
-\end{enumerate}
 
 \section{结论}
 \label{sec:conclusion}
@@ -846,11 +646,35 @@ case OVT_BACK:
     break;
 \end{lstlisting}
 
-\MaiAppendix{附录 B 关键引脚分配}
+\MaiAppendix{附录 B 硬件资料}
 
 \begin{table}[htbp]
   \centering
-  \caption*{表 B.1\quad 关键引脚分配}
+  \caption*{表 B.1\quad 主要器件选型与参数}
+  \label{tab:devices}
+  \begin{tabular}{lll}
+    \toprule
+    器件 & 型号 / 规格 & 作用 \\
+    \midrule
+    主控 & Infineon TC264D，双核 200 MHz & 感知、决策与控制 \\
+    核心板 & 仿逐飞 TC264 自制板 & 主控最小系统 \\
+    主板 & 逐飞通用学习母板 V3.1 & 外设接口与供电分配 \\
+    电机驱动 & 仿逐飞 DRV8701E 双路 H 桥 & 左右后轮驱动 \\
+    车模 & 逐飞科技 C 车模 & 前轮转向、后轮双电机驱动 \\
+    舵机 & SU400 & 前轮转向 \\
+    编码器 & 普地 1024 线 mini，2 个 & 左右轮速度与里程 \\
+    摄像头 & 总钻风 MT9V034 + 飞思尔偏振片 & 赛道与目标感知 \\
+    测距 & DL1B（VL53L1X） & 非接触发车与前方测距 \\
+    显示 & IPS200 全彩屏（SPI） & 参数整定与状态监视 \\
+    电池 & 格氏 ACE 3S 2200 mAh 30C & 11.1 V 动力电源 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+
+\begin{table}[htbp]
+  \centering
+  \caption*{表 B.2\quad 关键引脚分配}
   \begin{tabular}{lll}
     \toprule
     功能 & 引脚 & 备注 \\
@@ -870,6 +694,13 @@ case OVT_BACK:
   \end{tabular}
 \end{table}
 
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.34\textwidth]{MaiFigs/Mai高度.jpg}
+  \caption*{图 B.1\quad 摄像头安装高度与改造前整车高度实测（单位：cm；杆体截短后整车约 25 cm）}
+  \label{fig:sensors}
+\end{figure}
 \MaiAppendix{附录 C 典型问题与处理}
 
 \begin{table}[htbp]
@@ -887,6 +718,154 @@ case OVT_BACK:
     连续多次变道 & 看到锥桶就续期锁存 & 固定 1 s，锥桶离开 1 s 才允许下一组 \\
     屏幕刷新但车不动 & 断言失败关闭 PWM/PIT/EXTI & 检查屏幕坐标和 flash 页号 \\
     烧录后不运行 & CPU 停在 halt & 烧录后按复位 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\MaiAppendix{附录 D 赛项一补充}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    node distance=1.3cm,
+    st/.style={draw,circle,minimum size=1.55cm,align=center,font=\zihao{-5}},
+    box/.style={draw,rounded corners,minimum width=4.2cm,minimum height=0.9cm,align=center,font=\zihao{-5}},
+    arr/.style={-{Latex[length=2mm]},thick}]
+    \node[st] (idle) {IDLE\\巡航};
+    \node[st,right=of idle] (go) {GO\\左借道};
+    \node[st,right=of go] (back) {BACK\\回线};
+    \node[box,below=of go] (onc) {任意状态：对向半区 $\ge45\%$\\大灯闪 3 次，冷却 4 s};
+    \draw[arr] (idle) -- node[above,font=\zihao{6}]{前车 100 ms} (go);
+    \draw[arr] (go) -- node[above,font=\zihao{6}]{2 s} (back);
+    \draw[arr] (back) to[bend left=38] node[below,font=\zihao{6}]{1.5 s} (idle);
+  \end{tikzpicture}
+  \caption*{图 D.1\quad 赛项一超车/会车状态机}
+  \label{fig:overtake}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption*{表 D.1\quad 赛项一超车/会车关键参数}
+  \label{tab:overtake}
+  \begin{tabular}{lll}
+    \toprule
+    参数 & 取值 & 作用 \\
+    \midrule
+    \texttt{OVT\_OWN\_RIGHT} & 1 & 本车走右道，左半区是对向车道 \\
+    \texttt{OVT\_LANE\_PX} & 25 px & 借道时参考点左移量 \\
+    \texttt{OVT\_ENTER\_TICKS} & 20（100 ms） & 前车确认时间 \\
+    \texttt{OVT\_PASS\_TICKS} & 400（2.0 s） & 左借道保持时间 \\
+    \texttt{OVT\_BACK\_TICKS} & 300（1.5 s） & 回线保持时间 \\
+    \texttt{OVT\_COOL\_TICKS} & 300（1.5 s） & 超车后冷却时间 \\
+    \texttt{CAR\_PCT\_HI} & 45\% & 判定有车的白点占比阈值 \\
+    \texttt{CAR\_NEAR\_ROW} & 40 & 判定前车已靠近的行号阈值 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    node distance=4mm and 4mm,
+    box/.style={draw,rounded corners,minimum width=3.35cm,minimum height=0.7cm,align=center,font=\zihao{-5}},
+    arr/.style={-{Latex[length=2mm]},thick}]
+    \node[box] (a) {帧完成标志};
+    \node[box,right=of a] (b) {迭代阈值};
+    \node[box,right=of b] (c) {二值化};
+    \node[box,right=of c] (d) {边界 / 补线};
+    \node[box,below=of d] (e) {中线拟合};
+    \node[box,left=of e] (f) {标线识别};
+    \node[box,left=of f] (g) {锥桶识别};
+    \node[box,left=of g] (h) {反光抑制 / 目标点};
+    \draw[arr] (a) -- (b); \draw[arr] (b) -- (c); \draw[arr] (c) -- (d);
+    \draw[arr] (d) -- (e);
+    \draw[arr] (e) -- (f); \draw[arr] (f) -- (g); \draw[arr] (g) -- (h);
+  \end{tikzpicture}
+  \caption*{图 D.2\quad CPU1 图像处理流程}
+  \label{fig:pipeline}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[scale=0.92,transform shape,font=\zihao{5}]
+    % 左图：单道
+    \draw[thick] (0,0) rectangle (6,3.2);
+    \draw[thick] (0,1.6) -- (6,1.6);
+    \draw[dashed,thick] (3,0) -- (3,3.2);
+    \node at (1.5,0.8) {左道};
+    \node at (4.5,0.8) {右道};
+    \draw[<->] (0,2.45) -- (3,2.45) node[midway,above] {$W\approx43$ px};
+    % 右图：整条路
+    \begin{scope}[xshift=8cm]
+      \draw[thick] (0,0) rectangle (6,3.2);
+      \draw[thick] (0,1.6) -- (2.2,1.6);
+      \draw[thick] (3.8,1.6) -- (6,1.6);
+      \draw[dashed,thick] (3,0) -- (3,1.6);
+      \draw[dashed,thick] (3,1.6) -- (3,3.2);
+      \node at (1.5,0.8) {左道};
+      \node at (4.5,0.8) {右道};
+      \draw[<->] (0,2.45) -- (6,2.45) node[midway,above] {$W\approx90\sim116$ px};
+    \end{scope}
+    \node at (3,-0.6) {(a) 虚线当前行有白段};
+    \node at (11,-0.6) {(b) 虚线当前行是断口};
+  \end{tikzpicture}
+  \caption*{图 D.3\quad 虚线断口导致的赛道宽度跳变}
+  \label{fig:width}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    node distance=5mm,
+    box/.style={draw,rounded corners,minimum width=3.4cm,minimum height=0.8cm,align=center,font=\zihao{5}},
+    arr/.style={-{Latex[length=2mm]},thick}]
+    \node[box] (see) {看到锥桶\\$N\ge2$};
+    \node[box,right=of see] (dir) {比较左右空间\\确定变道方向};
+    \node[box,right=of dir] (hold) {锁存 1 s\\目标点 $P_0\pm22$};
+    \node[box,below=of hold] (back) {解除锁存\\回到循迹};
+    \node[box,below=of dir] (clear) {锥桶离开 1 s\\允许下一组};
+    \draw[arr] (see) -- (dir);
+    \draw[arr] (dir) -- (hold);
+    \draw[arr] (hold) -- (back);
+    \draw[arr] (back) -- (clear);
+  \end{tikzpicture}
+  \caption*{图 D.4\quad 锥形标锁存绕行流程}
+  \label{fig:cone}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \begin{tikzpicture}[
+    node distance=1.4cm,
+    st/.style={draw,circle,minimum size=1.5cm,align=center,font=\zihao{5}},
+    arr/.style={-{Latex[length=2mm]},thick}]
+    \node[st] (s0) {0\\空闲};
+    \node[st,right=of s0] (s1) {1\\慢行};
+    \node[st,right=of s1] (s2) {2\\停车};
+    \node[st,right=of s2] (s3) {3\\通过};
+    \draw[arr] (s0) -- node[above,font=\zihao{6}]{菱形 8 帧} (s1);
+    \draw[arr] (s1) -- node[above,font=\zihao{6}]{横道 15 帧} (s2);
+    \draw[arr] (s2) -- node[above,font=\zihao{6}]{5 s} (s3);
+    \draw[arr] (s3) to[bend left=35] node[below,font=\zihao{6}]{横道消失} (s0);
+    \draw[arr] (s1) to[bend right=65] node[above=2pt,font=\zihao{6}]{菱形消失且前进 60 cm} (s0);
+  \end{tikzpicture}
+  \caption*{图 D.5\quad 道路标线状态机}
+  \label{fig:marker}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption*{表 D.2\quad 在线整定参数}
+  \label{tab:params}
+  \begin{tabular}{llll}
+    \toprule
+    参数 & 作用 & 默认值 & 范围 \\
+    \midrule
+    \texttt{zhiyu} & 二值化阈值系数 & 95 & 20$\sim$255 \\
+    \texttt{Differ} & 阈值偏置 & 0 & $-50\sim50$ \\
+    曝光时间 & 摄像头曝光 & 2300 & 60$\sim$10000 \\
+    增益 & 摄像头模拟增益 & 64 & 16$\sim$124 \\
+    \texttt{STrim} & 转向微调 & 16 & $-60\sim60$ \\
     \bottomrule
   \end{tabular}
 \end{table}
